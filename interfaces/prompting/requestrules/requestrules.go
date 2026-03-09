@@ -89,12 +89,11 @@ func (rule *Rule) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Validate verifies internal correctness of the rule's constraints and
-// permissions and prunes any expired permissions. Returns a
-// [prompting.PermExpirationStatus] indicating whether all, any, or no
-// permissions were expired. If the rule is invalid, returns an error.
-func (rule *Rule) validate(at prompting.At) (status prompting.PermExpirationStatus, err error) {
-	return rule.Constraints.ValidateForInterface(rule.Interface, at)
+// pruneExpired prunes any permissions from the rule's constraints which have
+// expired at the given point in time. If all permissions are expired, returns
+// true.
+func (rule *Rule) pruneExpired(at prompting.At) (allExpired bool) {
+	return rule.Constraints.PruneExpired(at)
 }
 
 // expired returns true if all permissions for the receiving rule have expired
@@ -280,13 +279,7 @@ func (rdb *RuleDB) load() (retErr error) {
 		if err != nil {
 			return err
 		}
-		status, err := rule.validate(at)
-		if err != nil {
-			// we're loading previously saved rules, so this should not happen
-			errInvalid = err
-			break
-		}
-		if status == prompting.AllPermsExpired {
+		if rule.pruneExpired(at) {
 			expiredRules[rule.ID] = true
 			continue
 		}
@@ -1449,7 +1442,7 @@ func (rdb *RuleDB) PatchRule(user uint32, id prompting.IDType, constraintsPatch 
 	if constraintsPatch == nil {
 		constraintsPatch = &prompting.RuleConstraintsPatch{}
 	}
-	ruleConstraints, err := constraintsPatch.PatchRuleConstraints(origRule.Constraints, origRule.Interface, at)
+	ruleConstraints, err := constraintsPatch.PatchRuleConstraints(origRule.Constraints, at)
 	if err != nil {
 		return nil, err
 	}
