@@ -1219,6 +1219,14 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsPatchUnhappy(c *C) {
 			expectedErr: `invalid path pattern: pattern must start with '/': "not a pattern"`,
 		},
 		{
+			iface: "home",
+			constraintsJSON: prompting.ConstraintsJSON{
+				// invalid permission
+				"permissions": json.RawMessage(`{"access":{"outcome":"allow","lifespan":"forever"}}`),
+			},
+			expectedErr: `invalid permissions for home interface: "access"`,
+		},
+		{
 			iface: "camera",
 			constraintsJSON: prompting.ConstraintsJSON{
 				// invalid outcome
@@ -1233,6 +1241,22 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsPatchUnhappy(c *C) {
 				"permissions": json.RawMessage(`{"read":{"outcome":"allow","lifespan":"foo"}}`),
 			},
 			expectedErr: `invalid lifespan: "foo"`,
+		},
+		{
+			iface: "camera",
+			constraintsJSON: prompting.ConstraintsJSON{
+				// invalid permission
+				"permissions": json.RawMessage(`{"read":{"outcome":"allow","lifespan":"forever"}}`),
+			},
+			expectedErr: `invalid permissions for camera interface: "read"`,
+		},
+		{
+			iface: "audio-record",
+			constraintsJSON: prompting.ConstraintsJSON{
+				// invalid permission
+				"permissions": json.RawMessage(`{"read":{"outcome":"allow","lifespan":"forever"}}`),
+			},
+			expectedErr: `invalid permissions for audio-record interface: "read"`,
 		},
 	} {
 		result, err := prompting.UnmarshalRuleConstraintsPatch(testCase.iface, testCase.constraintsJSON)
