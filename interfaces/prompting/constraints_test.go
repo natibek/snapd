@@ -905,6 +905,60 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 				},
 			},
 		},
+		{
+			prompting.RulePermissionMap{
+				"access": &prompting.RulePermissionEntry{
+					Outcome:    prompting.OutcomeAllow,
+					Lifespan:   prompting.LifespanTimespan,
+					Expiration: at.Time.Add(-time.Minute),
+				},
+			},
+			prompting.AllPermsExpired,
+			prompting.RulePermissionMap{},
+		},
+		{
+			prompting.RulePermissionMap{
+				"access": &prompting.RulePermissionEntry{
+					Outcome:    prompting.OutcomeAllow,
+					Lifespan:   prompting.LifespanTimespan,
+					Expiration: at.Time.Add(time.Minute),
+				},
+			},
+			prompting.NoPermsExpired,
+			prompting.RulePermissionMap{
+				"access": &prompting.RulePermissionEntry{
+					Outcome:    prompting.OutcomeAllow,
+					Lifespan:   prompting.LifespanTimespan,
+					Expiration: at.Time.Add(time.Minute),
+				},
+			},
+		},
+		{
+			prompting.RulePermissionMap{
+				"access": &prompting.RulePermissionEntry{
+					Outcome:   prompting.OutcomeAllow,
+					Lifespan:  prompting.LifespanSession,
+					SessionID: at.SessionID + 1,
+				},
+			},
+			prompting.AllPermsExpired,
+			prompting.RulePermissionMap{},
+		},
+		{
+			prompting.RulePermissionMap{
+				"access": &prompting.RulePermissionEntry{
+					Outcome:  prompting.OutcomeAllow,
+					Lifespan: prompting.LifespanForever,
+				},
+			},
+			prompting.NoPermsExpired,
+			prompting.RulePermissionMap{
+				"access": &prompting.RulePermissionEntry{
+					Outcome:  prompting.OutcomeAllow,
+					Lifespan: prompting.LifespanForever,
+				},
+			},
+		},
 	} {
 		copiedPerms := make(prompting.RulePermissionMap, len(testCase.perms))
 		for perm, entry := range testCase.perms {
