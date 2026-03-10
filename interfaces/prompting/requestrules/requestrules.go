@@ -92,7 +92,7 @@ func (rule *Rule) UnmarshalJSON(data []byte) error {
 // pruneExpired prunes any permissions from the rule's constraints which have
 // expired at the given point in time. If all permissions are expired, returns
 // true.
-func (rule *Rule) pruneExpired(at prompting.At) (allExpired bool) {
+func (rule *Rule) pruneExpired(at prompting.At) prompting.PermExpirationStatus {
 	return rule.Constraints.PruneExpired(at)
 }
 
@@ -279,7 +279,8 @@ func (rdb *RuleDB) load() (retErr error) {
 		if err != nil {
 			return err
 		}
-		if rule.pruneExpired(at) {
+		status := rule.pruneExpired(at)
+		if status == prompting.AllPermsExpired {
 			expiredRules[rule.ID] = true
 			continue
 		}
@@ -1058,7 +1059,7 @@ func (rdb *RuleDB) AddRule(user uint32, snap string, iface string, constraints *
 //
 // If any of the given parameters are invalid, returns an error.
 func (rdb *RuleDB) makeNewRule(user uint32, snap string, iface string, constraints *prompting.Constraints, at prompting.At) (*Rule, error) {
-	ruleConstraints, err := constraints.ToRuleConstraints(iface, at)
+	ruleConstraints, err := constraints.ToRuleConstraints(at)
 	if err != nil {
 		return nil, err
 	}

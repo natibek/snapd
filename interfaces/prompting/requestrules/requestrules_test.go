@@ -1654,7 +1654,7 @@ func (s *requestrulesSuite) TestAddRuleMerges(c *C) {
 				Time:      rule.Timestamp,
 				SessionID: prompting.IDType(0x12345),
 			}
-			ruleConstraints, err := constraints.ToRuleConstraints(iface, at)
+			ruleConstraints, err := constraints.ToRuleConstraints(at)
 			c.Assert(err, IsNil)
 			expectedPerms := ruleConstraints.Permissions
 			// Check that the permissions match what is expected.

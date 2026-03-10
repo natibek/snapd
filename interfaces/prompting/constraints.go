@@ -270,10 +270,9 @@ func (c *Constraints) ContainPermissions(permissions []string) bool {
 }
 
 // ToRuleConstraints validates the receiving Constraints and converts it to
-// RuleConstraints. If the constraints are not valid with respect to the given
-// interface, returns an error.
-func (c *Constraints) ToRuleConstraints(iface string, at At) (*RuleConstraints, error) {
-	rulePermissions, err := c.Permissions.toRulePermissionMap(iface, at)
+// RuleConstraints.
+func (c *Constraints) ToRuleConstraints(at At) (*RuleConstraints, error) {
+	rulePermissions, err := c.Permissions.toRulePermissionMap(at)
 	if err != nil {
 		// Constraints should have been validated when unmarshalling, so this
 		// should not occur.
@@ -359,7 +358,7 @@ const (
 // PruneExpired prunes any permissions from the permission map which have
 // expired at the given point in time. If all permissions have expired, then
 // returns true.
-func (c *RuleConstraints) PruneExpired(at At) (allExpired bool) {
+func (c *RuleConstraints) PruneExpired(at At) PermExpirationStatus {
 	// XXX: this is called only when loading rules from disk.
 	return c.Permissions.pruneExpired(at)
 }
@@ -603,7 +602,7 @@ func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage, isPat
 // toRulePermissionMap converts the PermissionMap to a RulePermissionMap,
 // using the given at information to convert each PermissionEntry to a
 // RulePermissionEntry.
-func (pm PermissionMap) toRulePermissionMap(iface string, at At) (RulePermissionMap, error) {
+func (pm PermissionMap) toRulePermissionMap(at At) (RulePermissionMap, error) {
 	var errs []error
 	rulePermissionMap := make(RulePermissionMap, len(pm))
 	for perm, entry := range pm {
@@ -674,21 +673,26 @@ func unmarshalRulePermissionMap(iface string, permissionsJSON json.RawMessage) (
 // pruneExpired prunes any permissions from the permission map which have
 // expired at the given point in time. If all permissions have expired, then
 // returns true.
-func (pm RulePermissionMap) pruneExpired(at At) (allExpired bool) {
+func (pm RulePermissionMap) pruneExpired(at At) PermExpirationStatus {
 	var expiredPerms []string
 	for perm, entry := range pm {
 		if entry.Expired(at) {
 			expiredPerms = append(expiredPerms, perm)
 		}
 	}
+	originalLength := len(pm)
 	for _, perm := range expiredPerms {
 		delete(pm, perm)
 	}
 	if len(pm) == 0 {
 		// All permissions expired
-		return true
+		return AllPermsExpired
 	}
-	return false
+
+	if len(pm) < originalLength {
+		return AnyPermsExpired
+	}
+	return NoPermsExpired
 }
 
 // Expired returns true if all permissions in the map have expired at the given

@@ -441,7 +441,6 @@ func (s *constraintsSuite) TestConstraintsToRuleConstraintsHappy(c *C) {
 		expected    *prompting.RuleConstraints
 	}{
 		{
-			iface: "home",
 			constraints: &prompting.Constraints{
 				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
 					Pattern: mustParsePathPattern(c, "/path/to/{foo,*or*,bar}{,/}**"),
@@ -485,7 +484,6 @@ func (s *constraintsSuite) TestConstraintsToRuleConstraintsHappy(c *C) {
 			},
 		},
 		{
-			iface: "camera",
 			constraints: &prompting.Constraints{
 				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsEmpty{},
 				Permissions: prompting.PermissionMap{
@@ -506,29 +504,8 @@ func (s *constraintsSuite) TestConstraintsToRuleConstraintsHappy(c *C) {
 				},
 			},
 		},
-		{
-			iface: "audio-record",
-			constraints: &prompting.Constraints{
-				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsEmpty{},
-				Permissions: prompting.PermissionMap{
-					"access": &prompting.PermissionEntry{
-						Outcome:  prompting.OutcomeAllow,
-						Lifespan: prompting.LifespanForever,
-					},
-				},
-			},
-			expected: &prompting.RuleConstraints{
-				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsEmpty{},
-				Permissions: prompting.RulePermissionMap{
-					"access": &prompting.RulePermissionEntry{
-						Outcome:  prompting.OutcomeAllow,
-						Lifespan: prompting.LifespanForever,
-					},
-				},
-			},
-		},
 	} {
-		result, err := testCase.constraints.ToRuleConstraints(testCase.iface, at)
+		result, err := testCase.constraints.ToRuleConstraints(at)
 		c.Check(err, IsNil)
 		c.Check(result, DeepEquals, testCase.expected)
 	}
@@ -606,7 +583,7 @@ func (s *constraintsSuite) TestConstraintsToRuleConstraintsUnhappy(c *C) {
 		constraints := &prompting.Constraints{
 			Permissions: testCase.perms,
 		}
-		result, err := constraints.ToRuleConstraints(testCase.iface, at)
+		result, err := constraints.ToRuleConstraints(at)
 		c.Check(result, IsNil, Commentf("testCase: %+v", testCase))
 		c.Check(err, ErrorMatches, testCase.errStr, Commentf("testCase: %+v", testCase))
 	}
@@ -791,7 +768,7 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 
 	for _, testCase := range []struct {
 		perms    prompting.RulePermissionMap
-		expired  bool
+		status   prompting.PermExpirationStatus
 		expected prompting.RulePermissionMap
 	}{
 		{
@@ -801,7 +778,7 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 					Lifespan: prompting.LifespanForever,
 				},
 			},
-			false,
+			prompting.NoPermsExpired,
 			prompting.RulePermissionMap{
 				"read": &prompting.RulePermissionEntry{
 					Outcome:  prompting.OutcomeAllow,
@@ -817,7 +794,7 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 					Expiration: at.Time,
 				},
 			},
-			true,
+			prompting.AllPermsExpired,
 			prompting.RulePermissionMap{},
 		},
 		{
@@ -838,7 +815,7 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 					Expiration: at.Time,
 				},
 			},
-			false,
+			prompting.AnyPermsExpired,
 			prompting.RulePermissionMap{
 				"write": &prompting.RulePermissionEntry{
 					Outcome:    prompting.OutcomeDeny,
@@ -855,7 +832,7 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 					SessionID: at.SessionID,
 				},
 			},
-			false,
+			prompting.NoPermsExpired,
 			prompting.RulePermissionMap{
 				"read": &prompting.RulePermissionEntry{
 					Outcome:   prompting.OutcomeAllow,
@@ -872,7 +849,7 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 					SessionID: at.SessionID + 1,
 				},
 			},
-			true,
+			prompting.AllPermsExpired,
 			prompting.RulePermissionMap{},
 		},
 		{
@@ -893,7 +870,7 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 					SessionID: at.SessionID + 1,
 				},
 			},
-			true,
+			prompting.AllPermsExpired,
 			prompting.RulePermissionMap{},
 		},
 		{
@@ -914,7 +891,7 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 					SessionID: at.SessionID,
 				},
 			},
-			false,
+			prompting.AnyPermsExpired,
 			prompting.RulePermissionMap{
 				"write": &prompting.RulePermissionEntry{
 					Outcome:    prompting.OutcomeAllow,
@@ -936,8 +913,8 @@ func (s *constraintsSuite) TestRuleConstraintsPruneExpired(c *C) {
 		constraints := &prompting.RuleConstraints{
 			Permissions: copiedPerms,
 		}
-		expired := constraints.PruneExpired(at)
-		c.Check(expired, Equals, testCase.expired, Commentf("testCase: %+v\nremaining perms: %+v", testCase, constraints.Permissions))
+		status := constraints.PruneExpired(at)
+		c.Check(status, Equals, testCase.status, Commentf("testCase: %+v\nremaining perms: %+v", testCase, constraints.Permissions))
 		c.Check(constraints.Permissions, DeepEquals, testCase.expected, Commentf("testCase: %+v\nremaining perms: %+v", testCase, constraints.Permissions))
 	}
 }
