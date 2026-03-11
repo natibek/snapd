@@ -604,8 +604,13 @@ func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage, isPat
 // RulePermissionEntry.
 func (pm PermissionMap) toRulePermissionMap(at At) (RulePermissionMap, error) {
 	var errs []error
+	var nilPerms []string
 	rulePermissionMap := make(RulePermissionMap, len(pm))
 	for perm, entry := range pm {
+		if entry == nil {
+			nilPerms = append(nilPerms, perm)
+			continue
+		}
 		// unmarshalPermissionMap ensures no entries are nil
 		rulePermissionEntry, err := entry.toRulePermissionEntry(at)
 		if err != nil {
@@ -617,6 +622,9 @@ func (pm PermissionMap) toRulePermissionMap(at At) (RulePermissionMap, error) {
 	}
 	if len(errs) > 0 {
 		return nil, strutil.JoinErrors(errs...)
+	}
+	for _, perm := range nilPerms {
+		delete(rulePermissionMap, perm)
 	}
 	return rulePermissionMap, nil
 }
