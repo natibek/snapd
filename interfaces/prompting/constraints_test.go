@@ -293,6 +293,14 @@ func (s *constraintsSuite) TestUnmarshalConstraintsUnhappy(c *C) {
 			expectedErr: `invalid duration: cannot have specified duration when lifespan is \"session\": \"shouldn't be here\"\ninvalid permissions for home interface: "notreal"`,
 		},
 		{
+			iface: "home",
+			constraintsJSON: prompting.ConstraintsJSON{
+				"path-pattern": json.RawMessage(`"/home/test/foo"`),
+				"permissions":  json.RawMessage(`{"read":null}`),
+			},
+			expectedErr: "invalid permissions for home interface: permissions empty",
+		},
+		{
 			iface:           "camera",
 			constraintsJSON: prompting.ConstraintsJSON{},
 			expectedErr:     "invalid permissions for camera interface: permissions empty",
@@ -755,6 +763,14 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsUnhappy(c *C) {
 				"permissions": json.RawMessage(`{"notreal":{"outcome":"allow","lifespan":"forever"},"write":{"outcome":"deny","lifespan":"timespan"}}`),
 			},
 			expectedErr: "invalid expiration: cannot have unspecified expiration when lifespan is \"timespan\": \"0001-01-01T00:00:00Z\"\ninvalid permissions for home interface: \"notreal\"",
+		},
+		{
+			iface: "home",
+			constraintsJSON: prompting.ConstraintsJSON{
+				"path-pattern": json.RawMessage(`"/home/test/foo"`),
+				"permissions":  json.RawMessage(`{"read":null}`),
+			},
+			expectedErr: "invalid permissions for home interface: permissions empty",
 		},
 		{
 			iface:           "camera",
