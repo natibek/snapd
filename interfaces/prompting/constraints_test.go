@@ -532,6 +532,7 @@ func (s *constraintsSuite) TestConstraintsToRuleConstraintsHappy(c *C) {
 			},
 		},
 		{
+			// permission with lifespan session
 			constraints: &prompting.Constraints{
 				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsEmpty{},
 				Permissions: prompting.PermissionMap{
@@ -548,6 +549,27 @@ func (s *constraintsSuite) TestConstraintsToRuleConstraintsHappy(c *C) {
 						Outcome:   prompting.OutcomeAllow,
 						Lifespan:  prompting.LifespanSession,
 						SessionID: at.SessionID,
+					},
+				},
+			},
+		},
+		{
+			// permission with lifespan forever
+			constraints: &prompting.Constraints{
+				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsEmpty{},
+				Permissions: prompting.PermissionMap{
+					"access": &prompting.PermissionEntry{
+						Outcome:  prompting.OutcomeAllow,
+						Lifespan: prompting.LifespanForever,
+					},
+				},
+			},
+			expected: &prompting.RuleConstraints{
+				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsEmpty{},
+				Permissions: prompting.RulePermissionMap{
+					"access": &prompting.RulePermissionEntry{
+						Outcome:  prompting.OutcomeAllow,
+						Lifespan: prompting.LifespanForever,
 					},
 				},
 			},
@@ -759,7 +781,7 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsUnhappy(c *C) {
 			iface: "home",
 			constraintsJSON: prompting.ConstraintsJSON{
 				"path-pattern": json.RawMessage(`"/home/test/foo"`),
-				// Check that permissions aren't validated here
+				// invalid permission and empty duration for lifespan timespan
 				"permissions": json.RawMessage(`{"notreal":{"outcome":"allow","lifespan":"forever"},"write":{"outcome":"deny","lifespan":"timespan"}}`),
 			},
 			expectedErr: "invalid expiration: cannot have unspecified expiration when lifespan is \"timespan\": \"0001-01-01T00:00:00Z\"\ninvalid permissions for home interface: \"notreal\"",
@@ -1429,7 +1451,7 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsPatchUnhappy(c *C) {
 			iface: "home",
 			constraintsJSON: prompting.ConstraintsJSON{
 				"path-pattern": json.RawMessage(`"/home/test/foo"`),
-				// Check that permissions aren't validated here
+				// duration not provided for lifespan timespan
 				"permissions": json.RawMessage(`{"write":{"outcome":"deny","lifespan":"timespan"}}`),
 			},
 			expectedErr: "invalid duration: cannot have unspecified duration when lifespan is \"timespan\": \"\"",
