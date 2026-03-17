@@ -21,6 +21,7 @@ package prompting
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -545,25 +546,25 @@ func (c *RuleConstraintsPatch) PatchRuleConstraints(existing *RuleConstraints, a
 	return ruleConstraints, nil
 }
 
-// PermissionMap is a map from permissions to their corresponding entries,
-// which contain information about the outcome and lifespan for those
-// permissions.
-type PermissionMap map[string]*PermissionEntry
+type entry interface {
+	validate() error
+}
 
-// unmarshalPermissionMap unmarshals given data into a PermissionMap, checking
+// unmarshalEntryMap unmarshals given data into a PermissionMap/RulePermissionMap, checking
 // that all permissions are valid with respect to the given interface. If
 // isPatch is true, then permissions which map to nil entries are left in the
 // map; otherwise, nil permissions are discarded, and if there are no non-nil
 // permissions, then an error is returned.
-func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage, isPatch bool) (PermissionMap, error) {
+func unmarshalEntryMap[T entry](iface string, permissionsJSON json.RawMessage, isPatch bool) (map[string]T, error) {
 	availablePerms, ok := interfacePermissionsAvailable[iface]
 	if !ok {
 		return nil, prompting_errors.NewInvalidInterfaceError(iface, availableInterfaces())
 	}
-	var permissionMap PermissionMap
+	var permissionMap map[string]T
 	if err := json.Unmarshal(permissionsJSON, &permissionMap); err != nil {
 		return nil, err
 	}
+
 	var errs []error
 	var invalidPerms []string
 	var nilPerms []string
@@ -572,7 +573,7 @@ func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage, isPat
 			invalidPerms = append(invalidPerms, perm)
 			continue
 		}
-		if entry == nil {
+		if any(entry) == nil {
 			nilPerms = append(nilPerms, perm)
 			continue
 		}
@@ -585,8 +586,7 @@ func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage, isPat
 		errs = append(errs, prompting_errors.NewInvalidPermissionsError(iface, invalidPerms, availablePerms))
 	}
 	if len(errs) > 0 {
-		// TODO:GOVERSION: user errors.Join once on Go 1.20+
-		return nil, strutil.JoinErrors(errs...)
+		return nil, errors.Join(errs...)
 	}
 	if !isPatch {
 		for _, perm := range nilPerms {
@@ -599,6 +599,20 @@ func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage, isPat
 	return permissionMap, nil
 }
 
+// PermissionMap is a map from permissions to their corresponding entries,
+// which contain information about the outcome and lifespan for those
+// permissions.
+type PermissionMap map[string]*PermissionEntry
+
+// unmarshalPermissionMap unmarshals given data into a PermissionMap, checking
+// that all permissions are valid with respect to the given interface. If
+// isPatch is true, then permissions which map to nil entries are left in the
+// map; otherwise, nil permissions are discarded, and if there are no non-nil
+// permissions, then an error is returned.
+func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage, isPatch bool) (PermissionMap, error) {
+	return unmarshalEntryMap[*PermissionEntry](iface, permissionsJSON, isPatch)
+}
+
 // toRulePermissionMap converts the PermissionMap to a RulePermissionMap,
 // using the given at information to convert each PermissionEntry to a
 // RulePermissionEntry.
@@ -607,6 +621,7 @@ func (pm PermissionMap) toRulePermissionMap(at At) (RulePermissionMap, error) {
 	rulePermissionMap := make(RulePermissionMap, len(pm))
 	for perm, entry := range pm {
 		if entry == nil {
+			rulePermissionMap[perm] = nil
 			continue
 		}
 		// unmarshalPermissionMap ensures no entries are nil
@@ -632,45 +647,8 @@ type RulePermissionMap map[string]*RulePermissionEntry
 // unmarshalRulePermissionMap unmarshals given data into a RulePermissionMap,
 // checking that all permissions are valid with respect to the given interface.
 func unmarshalRulePermissionMap(iface string, permissionsJSON json.RawMessage) (RulePermissionMap, error) {
-	availablePerms, ok := interfacePermissionsAvailable[iface]
-	if !ok {
-		return nil, prompting_errors.NewInvalidInterfaceError(iface, availableInterfaces())
-	}
-	var permissionMap RulePermissionMap
-	if err := json.Unmarshal(permissionsJSON, &permissionMap); err != nil {
-		return nil, err
-	}
-	var errs []error
-	var invalidPerms []string
-	var nilPerms []string
-	for perm, entry := range permissionMap {
-		if !strutil.ListContains(availablePerms, perm) {
-			invalidPerms = append(invalidPerms, perm)
-			continue
-		}
-		if entry == nil {
-			nilPerms = append(nilPerms, perm)
-			continue
-		}
-		if err := entry.validate(); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-	}
-	if len(invalidPerms) > 0 {
-		errs = append(errs, prompting_errors.NewInvalidPermissionsError(iface, invalidPerms, availablePerms))
-	}
-	if len(errs) > 0 {
-		// TODO:GOVERSION: user errors.Join once on Go 1.20+
-		return nil, strutil.JoinErrors(errs...)
-	}
-	for _, perm := range nilPerms {
-		delete(permissionMap, perm)
-	}
-	if len(permissionMap) == 0 {
-		return nil, prompting_errors.NewPermissionsEmptyError(iface, availablePerms)
-	}
-	return permissionMap, nil
+	const isPatch = false
+	return unmarshalEntryMap[*RulePermissionEntry](iface, permissionsJSON, isPatch)
 }
 
 // pruneExpired prunes any permissions from the permission map which have
