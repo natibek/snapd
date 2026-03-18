@@ -1242,6 +1242,10 @@ func (s *requestrulesSuite) TestAddRuleErrors(c *C) {
 			&addRuleContents{Lifespan: prompting.LifespanType("invalid")},
 			`invalid lifespan: "invalid"`,
 		},
+		{ // Invalid outcome
+			&addRuleContents{Outcome: prompting.OutcomeType("invalid")},
+			`invalid outcome: "invalid"`,
+		},
 		{ // Invalid lifespan (for rules)
 			&addRuleContents{Lifespan: prompting.LifespanSingle},
 			prompting_errors.NewRuleLifespanSingleError(prompting.SupportedRuleLifespans).Error(),

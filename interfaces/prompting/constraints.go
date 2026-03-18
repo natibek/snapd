@@ -725,6 +725,11 @@ func (e *PermissionEntry) validate() error {
 // LifepanSession, then the sessionID at the given point in time must be
 // non-zero, and is saved in the RulePermissionEntry.
 func (e *PermissionEntry) toRulePermissionEntry(at At) (*RulePermissionEntry, error) {
+	if _, err := e.Outcome.AsBool(); err != nil {
+		// Error should not occur, since the permission entry should already
+		// have been validated.
+		return nil, err
+	}
 	if e.Lifespan == LifespanSingle {
 		// We don't allow rules with lifespan "single"
 		return nil, prompting_errors.NewRuleLifespanSingleError(SupportedRuleLifespans)
