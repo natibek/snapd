@@ -228,6 +228,23 @@ func (s *constraintsSuite) TestUnmarshalConstraintsHappy(c *C) {
 			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
 		},
 		{
+			// preserve empty entries when unmarshalling
+			iface: "home",
+			constraintsJSON: prompting.ConstraintsJSON{
+				"path-pattern": json.RawMessage(`"/home/test/foo"`),
+				"permissions":  json.RawMessage(`{"read":null}`),
+			},
+			expected: &prompting.Constraints{
+				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
+					Pattern: mustParsePathPattern(c, "/home/test/foo"),
+				},
+				Permissions: prompting.PermissionMap{
+					"read": nil,
+				},
+			},
+			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
+		},
+		{
 			iface: "camera",
 			constraintsJSON: prompting.ConstraintsJSON{
 				"permissions": json.RawMessage(`{"access":{"outcome":"allow","lifespan":"session"}}`),
@@ -291,14 +308,6 @@ func (s *constraintsSuite) TestUnmarshalConstraintsUnhappy(c *C) {
 				"permissions": json.RawMessage(`{"notreal":{"outcome":"allow","lifespan":"forever"},"write":{"outcome":"deny","lifespan":"session","duration":"shouldn't be here"},"execute":{"outcome":"allow","lifespan":"single"}}`),
 			},
 			expectedErr: `invalid duration: cannot have specified duration when lifespan is \"session\": \"shouldn't be here\"\ninvalid permissions for home interface: "notreal"`,
-		},
-		{
-			iface: "home",
-			constraintsJSON: prompting.ConstraintsJSON{
-				"path-pattern": json.RawMessage(`"/home/test/foo"`),
-				"permissions":  json.RawMessage(`{"read":null}`),
-			},
-			expectedErr: "invalid permissions for home interface: permissions empty",
 		},
 		{
 			iface:           "camera",
@@ -720,6 +729,23 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsHappy(c *C) {
 			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
 		},
 		{
+			// preserve empty entries when unmarhalling
+			iface: "home",
+			constraintsJSON: prompting.ConstraintsJSON{
+				"path-pattern": json.RawMessage(`"/home/test/foo"`),
+				"permissions":  json.RawMessage(`{"read":null}`),
+			},
+			expected: &prompting.RuleConstraints{
+				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
+					Pattern: mustParsePathPattern(c, "/home/test/foo"),
+				},
+				Permissions: prompting.RulePermissionMap{
+					"read": nil,
+				},
+			},
+			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
+		},
+		{
 			iface: "camera",
 			constraintsJSON: prompting.ConstraintsJSON{
 				"permissions": json.RawMessage(`{"access":{"outcome":"allow","lifespan":"session","session-id":"ABCDABCD12345678"}}`),
@@ -785,14 +811,6 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsUnhappy(c *C) {
 				"permissions": json.RawMessage(`{"notreal":{"outcome":"allow","lifespan":"forever"},"write":{"outcome":"deny","lifespan":"timespan"}}`),
 			},
 			expectedErr: "invalid expiration: cannot have unspecified expiration when lifespan is \"timespan\": \"0001-01-01T00:00:00Z\"\ninvalid permissions for home interface: \"notreal\"",
-		},
-		{
-			iface: "home",
-			constraintsJSON: prompting.ConstraintsJSON{
-				"path-pattern": json.RawMessage(`"/home/test/foo"`),
-				"permissions":  json.RawMessage(`{"read":null}`),
-			},
-			expectedErr: "invalid permissions for home interface: permissions empty",
 		},
 		{
 			iface:           "camera",
