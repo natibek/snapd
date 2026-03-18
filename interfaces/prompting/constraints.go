@@ -486,10 +486,9 @@ func UnmarshalRuleConstraintsPatch(iface string, constraintsJSON ConstraintsJSON
 	return constraints, nil
 }
 
-// PatchRuleConstraints validates the receiving RuleConstraintsPatch and uses
-// the given existing rule constraints to construct a new RuleConstraints.
+// patchRulePermissionMap patches an existing RulePermissionMap using a patch PermissionMap.
 //
-// If the path pattern or permissions fields are omitted, they are left
+// If the path pattern or permissions fields are omitted in the patch, they are left
 // unchanged from the existing rule. If the permissions field is present in
 // the patch, then any permissions which are omitted from the patch's
 // permission map are left unchanged from the existing rule. To remove an
@@ -500,27 +499,17 @@ func UnmarshalRuleConstraintsPatch(iface string, constraintsJSON ConstraintsJSON
 // permissions and compute any expirations for new permissions.
 //
 // The existing rule constraints are not mutated.
-func (c *RuleConstraintsPatch) PatchRuleConstraints(existing *RuleConstraints, at At) (*RuleConstraints, error) {
-	ruleConstraints := &RuleConstraints{
-		InterfaceSpecific: existing.InterfaceSpecific,
-	}
-	if c.InterfaceSpecific != nil {
-		ruleConstraints.InterfaceSpecific = c.InterfaceSpecific.patch(existing.InterfaceSpecific)
-	}
-	if c.Permissions == nil {
-		ruleConstraints.Permissions = existing.Permissions
-		return ruleConstraints, nil
-	}
+func (pm *PermissionMap) patchRulePermissionMap(existing *RulePermissionMap, at At) (RulePermissionMap, error) {
 	// Permissions are specified in the patch, need to merge them
-	newPermissions := make(RulePermissionMap, len(c.Permissions)+len(existing.Permissions))
+	newPermissions := make(RulePermissionMap, len(*pm)+len(*existing))
 	// Pre-populate newPermissions with all the non-expired existing permissions
-	for perm, entry := range existing.Permissions {
+	for perm, entry := range *existing {
 		if !entry.Expired(at) {
 			newPermissions[perm] = entry
 		}
 	}
 	var errs []error
-	for perm, entry := range c.Permissions {
+	for perm, entry := range *pm {
 		if entry == nil {
 			// nil value for permission indicates that it should be removed.
 			// (In contrast, omitted permissions are left unchanged from the
@@ -540,6 +529,26 @@ func (c *RuleConstraintsPatch) PatchRuleConstraints(existing *RuleConstraints, a
 	}
 	if len(newPermissions) == 0 {
 		return nil, prompting_errors.ErrPatchedRuleHasNoPerms
+	}
+	return newPermissions, nil
+}
+
+// PatchRuleConstraints validates the receiving RuleConstraintsPatch and uses
+// the given existing rule constraints to construct a new RuleConstraints.
+func (c *RuleConstraintsPatch) PatchRuleConstraints(existing *RuleConstraints, at At) (*RuleConstraints, error) {
+	ruleConstraints := &RuleConstraints{
+		InterfaceSpecific: existing.InterfaceSpecific,
+	}
+	if c.InterfaceSpecific != nil {
+		ruleConstraints.InterfaceSpecific = c.InterfaceSpecific.patch(existing.InterfaceSpecific)
+	}
+	if c.Permissions == nil {
+		ruleConstraints.Permissions = existing.Permissions
+		return ruleConstraints, nil
+	}
+	newPermissions, err := c.Permissions.patchRulePermissionMap(&existing.Permissions, at)
+	if err != nil {
+		return nil, err
 	}
 	ruleConstraints.Permissions = newPermissions
 	return ruleConstraints, nil
