@@ -627,6 +627,9 @@ func (pm PermissionMap) toRulePermissionMap(at At) (RulePermissionMap, error) {
 	if len(errs) > 0 {
 		return nil, strutil.JoinErrors(errs...)
 	}
+	if len(rulePermissionMap) == 0 {
+		return nil, fmt.Errorf("empty rule permission map")
+	}
 	return rulePermissionMap, nil
 }
 

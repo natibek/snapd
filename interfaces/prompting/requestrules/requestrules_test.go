@@ -1189,6 +1189,23 @@ func (s *requestrulesSuite) TestAddRuleRemoveRuleDuplicateVariants(c *C) {
 	c.Check(removed, DeepEquals, rule)
 }
 
+func (s *requestrulesSuite) TestAddRuleWithNilPermissionEntry(c *C) {
+	rdb, err := requestrules.New(s.defaultNotifyRule)
+	c.Assert(err, IsNil)
+
+	constraints, err := prompting.UnmarshalConstraints("home", prompting.ConstraintsJSON{
+		"path-pattern": json.RawMessage(`"/home/test/foo"`),
+		"permissions":  json.RawMessage(`{"read":null}`),
+	})
+	c.Assert(err, IsNil)
+	c.Assert(constraints.Permissions["read"], IsNil)
+
+	res, err := rdb.AddRule(s.defaultUser, "firefox", "home", constraints)
+	c.Assert(res, IsNil)
+	c.Assert(err.Error(), Matches, "empty rule permission map")
+
+}
+
 func (s *requestrulesSuite) TestAddRuleErrors(c *C) {
 	rdb, err := requestrules.New(s.defaultNotifyRule)
 	c.Assert(err, IsNil)

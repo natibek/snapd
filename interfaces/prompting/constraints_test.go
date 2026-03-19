@@ -628,6 +628,16 @@ func (s *constraintsSuite) TestConstraintsToRuleConstraintsUnhappy(c *C) {
 		errStr string
 	}{
 		{
+			perms:  nil,
+			errStr: `empty rule permission map`,
+		},
+		{
+			perms: prompting.PermissionMap{
+				"access": nil,
+			},
+			errStr: `empty rule permission map`,
+		},
+		{
 			perms: prompting.PermissionMap{
 				"read": &prompting.PermissionEntry{
 					Outcome:  prompting.OutcomeAllow,
@@ -729,23 +739,6 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsHappy(c *C) {
 			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
 		},
 		{
-			// preserve empty entries when unmarhalling
-			iface: "home",
-			constraintsJSON: prompting.ConstraintsJSON{
-				"path-pattern": json.RawMessage(`"/home/test/foo"`),
-				"permissions":  json.RawMessage(`{"read":null}`),
-			},
-			expected: &prompting.RuleConstraints{
-				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
-					Pattern: mustParsePathPattern(c, "/home/test/foo"),
-				},
-				Permissions: prompting.RulePermissionMap{
-					"read": nil,
-				},
-			},
-			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
-		},
-		{
 			iface: "camera",
 			constraintsJSON: prompting.ConstraintsJSON{
 				"permissions": json.RawMessage(`{"access":{"outcome":"allow","lifespan":"session","session-id":"ABCDABCD12345678"}}`),
@@ -778,6 +771,23 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsHappy(c *C) {
 				},
 			},
 			expectedPattern: mustParsePathPattern(c, "/**"),
+		},
+		{
+			// preserve empty entries when unmarhalling
+			iface: "home",
+			constraintsJSON: prompting.ConstraintsJSON{
+				"path-pattern": json.RawMessage(`"/home/test/foo"`),
+				"permissions":  json.RawMessage(`{"read":null}`),
+			},
+			expected: &prompting.RuleConstraints{
+				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
+					Pattern: mustParsePathPattern(c, "/home/test/foo"),
+				},
+				Permissions: prompting.RulePermissionMap{
+					"read": nil,
+				},
+			},
+			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
 		},
 	} {
 		result, err := prompting.UnmarshalRuleConstraints(testCase.iface, testCase.constraintsJSON)
