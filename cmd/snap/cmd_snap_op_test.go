@@ -3519,12 +3519,11 @@ func (s *SnapOpSuite) TestInstallManyNoChanges(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(rest, check.DeepEquals, []string{})
 	// note that (stable) is omitted
-	c.Check(s.Stdout(), check.Matches, `(?sm).*one already installed`)
-	c.Check(s.Stdout(), check.Matches, `(?sm).*two already installed`)
-	c.Check(s.Stdout(), check.Matches, `(?sm).*three already installed`)
-	c.Check(s.Stdout(), check.Matches, `(?sm).*three\+comp1 already installed`)
-	c.Check(s.Stdout(), check.Matches, `(?sm).*three\+comp2 already installed`)
-	c.Check(s.Stderr(), check.Equals, "")
+	c.Check(s.Stderr(), check.Matches, `(?sm).*"one" is already installed. see 'snap help refresh'`)
+	c.Check(s.Stderr(), check.Matches, `(?sm).*"two" is already installed. see 'snap help refresh'`)
+	c.Check(s.Stderr(), check.Matches, `(?sm).*"three\+comp1" is already installed`)
+	c.Check(s.Stderr(), check.Matches, `(?sm).*"three\+comp2" is already installed`)
+	c.Check(s.Stdout(), check.Equals, "")
 	// ensure that the fake server api was actually hit
 	c.Check(n, check.Equals, total)
 }

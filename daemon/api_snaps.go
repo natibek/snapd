@@ -43,6 +43,7 @@ import (
 	"github.com/snapcore/snapd/sandbox"
 	"github.com/snapcore/snapd/snap"
 	"github.com/snapcore/snapd/snap/channel"
+	"github.com/snapcore/snapd/snap/naming"
 	"github.com/snapcore/snapd/strutil"
 )
 
@@ -961,7 +962,6 @@ func installationTaskSets(ctx context.Context, st *state.State, inst *snapInstru
 		}
 
 		comps := inst.CompsForSnaps[name]
-		installedComponents[name] = append(installedComponents[name], comps...)
 
 		if snapst.IsInstalled() && len(comps) > 0 {
 			info, err := snapst.CurrentInfo()
@@ -969,22 +969,31 @@ func installationTaskSets(ctx context.Context, st *state.State, inst *snapInstru
 				return nil, nil, nil, err
 			}
 
-			ts, err := snapstateInstallComponents(ctx, st, comps, info, nil, opts)
+			var compsToInstall []string
+			for _, comp := range comps {
+				if snapst.CurrentComponentSideInfo(naming.NewComponentRef(name, comp)) == nil {
+					compsToInstall = append(compsToInstall, comp)
+				}
+			}
+
+			installedComponents[name] = append(installedComponents[name], compsToInstall...)
+			ts, err := snapstateInstallComponents(ctx, st, compsToInstall, info, nil, opts)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 
 			tss = append(tss, ts...)
-
-			continue
 		}
 
-		installedSnaps = append(installedSnaps, name)
-		snaps = append(snaps, snapstate.StoreSnap{
-			InstanceName: name,
-			Components:   comps,
-			RevOpts:      revOpts,
-		})
+		if !snapst.IsInstalled() {
+			installedSnaps = append(installedSnaps, name)
+			snaps = append(snaps, snapstate.StoreSnap{
+				InstanceName: name,
+				Components:   comps,
+				RevOpts:      revOpts,
+			})
+			installedComponents[name] = append(installedComponents[name], comps...)
+		}
 	}
 
 	// this means that we're installing a set of components for one snap that is
