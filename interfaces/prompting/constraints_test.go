@@ -772,23 +772,6 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsHappy(c *C) {
 			},
 			expectedPattern: mustParsePathPattern(c, "/**"),
 		},
-		{
-			// preserve empty entries when unmarhalling
-			iface: "home",
-			constraintsJSON: prompting.ConstraintsJSON{
-				"path-pattern": json.RawMessage(`"/home/test/foo"`),
-				"permissions":  json.RawMessage(`{"read":null}`),
-			},
-			expected: &prompting.RuleConstraints{
-				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
-					Pattern: mustParsePathPattern(c, "/home/test/foo"),
-				},
-				Permissions: prompting.RulePermissionMap{
-					"read": nil,
-				},
-			},
-			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
-		},
 	} {
 		result, err := prompting.UnmarshalRuleConstraints(testCase.iface, testCase.constraintsJSON)
 		c.Check(err, IsNil, Commentf("testCase: %+v", testCase))
@@ -850,6 +833,15 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsUnhappy(c *C) {
 				"permissions": json.RawMessage(`{"bad":{}}`),
 			},
 			expectedErr: "invalid permissions for audio-record interface: \"bad\"",
+		},
+		{
+			iface: "home",
+			constraintsJSON: prompting.ConstraintsJSON{
+				"path-pattern": json.RawMessage(`"/home/test/foo"`),
+				// do not preserve empty entries when unmarhalling
+				"permissions": json.RawMessage(`{"read":null}`),
+			},
+			expectedErr: "empty permission map",
 		},
 	} {
 		result, err := prompting.UnmarshalRuleConstraints(testCase.iface, testCase.constraintsJSON)

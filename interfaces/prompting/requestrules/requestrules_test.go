@@ -2906,6 +2906,35 @@ func (s *requestrulesSuite) TestRemoveRulesForSnapInterfaceErrors(c *C) {
 	s.checkNewNoticesSimple(c, nil)
 }
 
+func (s *requestrulesSuite) TestLoadNilPermissionEntryPanics(c *C) {
+	logbuf, restore := logger.MockLogger()
+	defer restore()
+
+	dbPath := s.prepDBPath(c)
+	rules := []*requestrules.Rule{
+		{
+			ID:        prompting.IDType(1),
+			Timestamp: time.Now(),
+			User:      s.defaultUser,
+			Snap:      "firefox",
+			Interface: "home",
+			Constraints: &prompting.RuleConstraints{
+				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
+					Pattern: mustParsePathPattern(c, "/home/test/foo"),
+				},
+				Permissions: prompting.RulePermissionMap{
+					"read": nil,
+				},
+			},
+		},
+	}
+	s.writeRules(c, dbPath, rules)
+
+	requestrules.New(s.defaultNotifyRule)
+	logErr := fmt.Errorf("%s", strings.TrimSpace(logbuf.String()))
+	c.Check(logErr, ErrorMatches, fmt.Sprintf(".*cannot load rule database: %s; using new empty rule database", "empty permission map"))
+}
+
 func (s *requestrulesSuite) TestPatchRule(c *C) {
 	currSession := prompting.IDType(0x12345)
 	restore := requestrules.MockReadOrAssignUserSessionID(func(rdb *requestrules.RuleDB, user uint32) (prompting.IDType, error) {

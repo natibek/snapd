@@ -558,11 +558,11 @@ type permissionEntryType interface {
 	validate() error
 }
 
-// unmarshalEntryMap unmarshals given data into a PermissionMap/RulePermissionMap, checking
+// unmarshalPermissionEntryMap unmarshals given data into a PermissionMap/RulePermissionMap, checking
 // that all permissions are valid with respect to the given interface.
 // Always want to preserve nil permissions when unmarshalling, and then either ignore them
 // in toRulePermissionMap or use them in PatchRuleConstraints
-func unmarshalPermissionEntryMap[T permissionEntryType](iface string, permissionsJSON json.RawMessage) (map[string]T, error) {
+func unmarshalPermissionEntryMap[T permissionEntryType](iface string, permissionsJSON json.RawMessage, preserveNilEntries bool) (map[string]T, error) {
 	availablePerms, ok := interfacePermissionsAvailable[iface]
 	if !ok {
 		return nil, prompting_errors.NewInvalidInterfaceError(iface, availableInterfaces())
@@ -574,17 +574,34 @@ func unmarshalPermissionEntryMap[T permissionEntryType](iface string, permission
 
 	var errs []error
 	var invalidPerms []string
+	var permsToDelete []string
 	for perm, entry := range permissionMap {
 		if !strutil.ListContains(availablePerms, perm) {
 			invalidPerms = append(invalidPerms, perm)
 			continue
 		}
 
-		if err := entry.validate(); err != nil {
-			errs = append(errs, err)
+		// checking nil entries with validate since it is complicated to do directly with interface
+		err := entry.validate()
+
+		if err == prompting_errors.NilEntry {
+			permsToDelete = append(permsToDelete, perm)
 			continue
 		}
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
+
+	if !preserveNilEntries {
+		for _, perm := range permsToDelete {
+			delete(permissionMap, perm)
+		}
+	}
+	if len(permissionMap) == 0 {
+		errs = append(errs, prompting_errors.EmptyPermissionMap)
+	}
+
 	if len(invalidPerms) > 0 {
 		errs = append(errs, prompting_errors.NewInvalidPermissionsError(iface, invalidPerms, availablePerms))
 	}
@@ -603,7 +620,8 @@ type PermissionMap map[string]*PermissionEntry
 // unmarshalPermissionMap unmarshals given data into a PermissionMap, checking
 // that all permissions are valid with respect to the given interface.
 func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage) (PermissionMap, error) {
-	return unmarshalPermissionEntryMap[*PermissionEntry](iface, permissionsJSON)
+	const preserveNilEntries = true
+	return unmarshalPermissionEntryMap[*PermissionEntry](iface, permissionsJSON, preserveNilEntries)
 }
 
 // toRulePermissionMap converts the PermissionMap to a RulePermissionMap,
@@ -641,7 +659,8 @@ type RulePermissionMap map[string]*RulePermissionEntry
 // unmarshalRulePermissionMap unmarshals given data into a RulePermissionMap,
 // checking that all permissions are valid with respect to the given interface.
 func unmarshalRulePermissionMap(iface string, permissionsJSON json.RawMessage) (RulePermissionMap, error) {
-	return unmarshalPermissionEntryMap[*RulePermissionEntry](iface, permissionsJSON)
+	const preserveNilEntries = false
+	return unmarshalPermissionEntryMap[*RulePermissionEntry](iface, permissionsJSON, preserveNilEntries)
 }
 
 // pruneExpired prunes any permissions from the permission map which have
@@ -695,7 +714,7 @@ type PermissionEntry struct {
 // lifespan with an appropriate duration.
 func (e *PermissionEntry) validate() error {
 	if e == nil {
-		return nil
+		return prompting_errors.NilEntry
 	}
 	if _, err := e.Outcome.AsBool(); err != nil {
 		return err
@@ -791,7 +810,7 @@ func (e *RulePermissionEntry) Expired(at At) bool {
 // expiration information for that lifespan.
 func (e *RulePermissionEntry) validate() error {
 	if e == nil {
-		return nil
+		return prompting_errors.NilEntry
 	}
 	if _, err := e.Outcome.AsBool(); err != nil {
 		return err
