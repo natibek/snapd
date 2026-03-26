@@ -452,11 +452,24 @@ func UnmarshalReplyConstraints(iface string, outcome OutcomeType, lifespan Lifes
 // rule, the permission should map to null.
 type RuleConstraintsPatch struct {
 	InterfaceSpecific InterfaceSpecificConstraints
-	Permissions       PermissionMap
+	Permissions       RulePermissionMapPatch
 }
 
 func (c *RuleConstraintsPatch) UnmarshalJSON([]byte) error {
 	panic("programmer error: cannot unmarshal RuleConstraintsPatch directly; must use UnmarshalRuleConstraintsPatch with a given interface")
+}
+
+type RulePermissionMapPatch map[string]*PermissionEntry
+
+func (c *RulePermissionMapPatch) UnmarshalJSON([]byte) error {
+	panic("programmer error: cannot unmarshal RulePermissionMapPatch directly; must use unmarshalRulePermissionMapPatch with a given interface")
+}
+
+// unmarshalRulePermissionMapPatch unmarshals given data into a RulePermissionMapPatch, checking
+// that all permissions are valid with respect to the given interface and preserving nil entries.
+func unmarshalRulePermissionMapPatch(iface string, permissionsJSON json.RawMessage) (RulePermissionMapPatch, error) {
+	const preserveNilEntries = true
+	return unmarshalPermissionEntryMap[*PermissionEntry](iface, permissionsJSON, preserveNilEntries)
 }
 
 // UnmarshalRuleConstraintsPatch parses rule constraints from the given json
@@ -476,7 +489,7 @@ func UnmarshalRuleConstraintsPatch(iface string, constraintsJSON ConstraintsJSON
 
 	permissionsJSON, ok := constraintsJSON["permissions"]
 	if ok {
-		permissionMap, err := unmarshalPermissionMap(iface, permissionsJSON)
+		permissionMap, err := unmarshalRulePermissionMapPatch(iface, permissionsJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -484,53 +497,6 @@ func UnmarshalRuleConstraintsPatch(iface string, constraintsJSON ConstraintsJSON
 	}
 
 	return constraints, nil
-}
-
-// patchRulePermissionMap patches an existing RulePermissionMap using a patch PermissionMap.
-//
-// If the path pattern or permissions fields are omitted in the patch, they are left
-// unchanged from the existing rule. If the permissions field is present in
-// the patch, then any permissions which are omitted from the patch's
-// permission map are left unchanged from the existing rule. To remove an
-// existing permission from the rule, the permission should map to null in the
-// permission map of the patch.
-//
-// The the given at information is used to prune any existing expired
-// permissions and compute any expirations for new permissions.
-//
-// The existing rule constraints are not mutated.
-func (pm *PermissionMap) patchRulePermissionMap(existing *RulePermissionMap, at At) (RulePermissionMap, error) {
-	// Permissions are specified in the patch, need to merge them
-	newPermissions := make(RulePermissionMap, len(*pm)+len(*existing))
-	// Pre-populate newPermissions with all the non-expired existing permissions
-	for perm, entry := range *existing {
-		if !entry.Expired(at) {
-			newPermissions[perm] = entry
-		}
-	}
-	var errs []error
-	for perm, entry := range *pm {
-		if entry == nil {
-			// nil value for permission indicates that it should be removed.
-			// (In contrast, omitted permissions are left unchanged from the
-			// original constraints.)
-			delete(newPermissions, perm)
-			continue
-		}
-		ruleEntry, err := entry.toRulePermissionEntry(at)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		newPermissions[perm] = ruleEntry
-	}
-	if len(errs) > 0 {
-		return nil, strutil.JoinErrors(errs...)
-	}
-	if len(newPermissions) == 0 {
-		return nil, prompting_errors.ErrPatchedRuleHasNoPerms
-	}
-	return newPermissions, nil
 }
 
 // PatchRuleConstraints validates the receiving RuleConstraintsPatch and uses
@@ -617,11 +583,62 @@ func unmarshalPermissionEntryMap[T permissionEntryType](iface string, permission
 // permissions.
 type PermissionMap map[string]*PermissionEntry
 
+func (c *PermissionMap) UnmarshalJSON([]byte) error {
+	panic("programmer error: cannot unmarshal PermissionMap directly; must use unmarshalPermissionMap with a given interface")
+}
+
 // unmarshalPermissionMap unmarshals given data into a PermissionMap, checking
-// that all permissions are valid with respect to the given interface.
+// that all permissions are valid with respect to the given interface without preserving nil entries.
 func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage) (PermissionMap, error) {
-	const preserveNilEntries = true
+	const preserveNilEntries = false
 	return unmarshalPermissionEntryMap[*PermissionEntry](iface, permissionsJSON, preserveNilEntries)
+}
+
+// patchRulePermissionMap patches an existing RulePermissionMap using a patch PermissionMap.
+//
+// If the path pattern or permissions fields are omitted in the patch, they are left
+// unchanged from the existing rule. If the permissions field is present in
+// the patch, then any permissions which are omitted from the patch's
+// permission map are left unchanged from the existing rule. To remove an
+// existing permission from the rule, the permission should map to null in the
+// permission map of the patch.
+//
+// The the given at information is used to prune any existing expired
+// permissions and compute any expirations for new permissions.
+//
+// The existing rule constraints are not mutated.
+func (pm RulePermissionMapPatch) patchRulePermissionMap(existing *RulePermissionMap, at At) (RulePermissionMap, error) {
+	// Permissions are specified in the patch, need to merge them
+	newPermissions := make(RulePermissionMap, len(pm)+len(*existing))
+	// Pre-populate newPermissions with all the non-expired existing permissions
+	for perm, entry := range *existing {
+		if !entry.Expired(at) {
+			newPermissions[perm] = entry
+		}
+	}
+	var errs []error
+	for perm, entry := range pm {
+		if entry == nil {
+			// nil value for permission indicates that it should be removed.
+			// (In contrast, omitted permissions are left unchanged from the
+			// original constraints.)
+			delete(newPermissions, perm)
+			continue
+		}
+		ruleEntry, err := entry.toRulePermissionEntry(at)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		newPermissions[perm] = ruleEntry
+	}
+	if len(errs) > 0 {
+		return nil, strutil.JoinErrors(errs...)
+	}
+	if len(newPermissions) == 0 {
+		return nil, prompting_errors.ErrPatchedRuleHasNoPerms
+	}
+	return newPermissions, nil
 }
 
 // toRulePermissionMap converts the PermissionMap to a RulePermissionMap,
@@ -643,6 +660,7 @@ func (pm PermissionMap) toRulePermissionMap(at At) (RulePermissionMap, error) {
 		rulePermissionMap[perm] = rulePermissionEntry
 	}
 	if len(errs) > 0 {
+		// Should not occur, as permissions are validated when unmarshalling
 		return nil, strutil.JoinErrors(errs...)
 	}
 	if len(rulePermissionMap) == 0 {
@@ -656,8 +674,12 @@ func (pm PermissionMap) toRulePermissionMap(at At) (RulePermissionMap, error) {
 // permissions.
 type RulePermissionMap map[string]*RulePermissionEntry
 
+func (c *RulePermissionMap) UnmarshalJSON([]byte) error {
+	panic("programmer error: cannot unmarshal RulePermissionMap directly; must use unmarshalRulePermissionMap with a given interface")
+}
+
 // unmarshalRulePermissionMap unmarshals given data into a RulePermissionMap,
-// checking that all permissions are valid with respect to the given interface.
+// checking that all permissions are valid with respect to the given interface without preserving nil entries.
 func unmarshalRulePermissionMap(iface string, permissionsJSON json.RawMessage) (RulePermissionMap, error) {
 	const preserveNilEntries = false
 	return unmarshalPermissionEntryMap[*RulePermissionEntry](iface, permissionsJSON, preserveNilEntries)

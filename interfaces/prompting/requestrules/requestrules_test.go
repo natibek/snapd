@@ -1189,23 +1189,6 @@ func (s *requestrulesSuite) TestAddRuleRemoveRuleDuplicateVariants(c *C) {
 	c.Check(removed, DeepEquals, rule)
 }
 
-func (s *requestrulesSuite) TestAddRuleWithNilPermissionEntry(c *C) {
-	rdb, err := requestrules.New(s.defaultNotifyRule)
-	c.Assert(err, IsNil)
-
-	constraints, err := prompting.UnmarshalConstraints("home", prompting.ConstraintsJSON{
-		"path-pattern": json.RawMessage(`"/home/test/foo"`),
-		"permissions":  json.RawMessage(`{"read":null}`),
-	})
-	c.Assert(err, IsNil)
-	c.Assert(constraints.Permissions["read"], IsNil)
-
-	res, err := rdb.AddRule(s.defaultUser, "firefox", "home", constraints)
-	c.Assert(res, IsNil)
-	c.Assert(err.Error(), Matches, "empty rule permission map")
-
-}
-
 func (s *requestrulesSuite) TestAddRuleErrors(c *C) {
 	rdb, err := requestrules.New(s.defaultNotifyRule)
 	c.Assert(err, IsNil)
@@ -2992,7 +2975,7 @@ func (s *requestrulesSuite) TestPatchRule(c *C) {
 		InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
 			Pattern: rule.Constraints.PathPattern(),
 		},
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"read": &prompting.PermissionEntry{
 				Outcome:  rule.Constraints.Permissions["read"].Outcome,
 				Lifespan: rule.Constraints.Permissions["read"].Lifespan,
@@ -3012,7 +2995,7 @@ func (s *requestrulesSuite) TestPatchRule(c *C) {
 	rule = patched
 
 	constraintsPatch = &prompting.RuleConstraintsPatch{
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"execute": &prompting.PermissionEntry{
 				Outcome:  rule.Constraints.Permissions["read"].Outcome,
 				Lifespan: rule.Constraints.Permissions["read"].Lifespan,
@@ -3047,7 +3030,7 @@ func (s *requestrulesSuite) TestPatchRule(c *C) {
 	rule = patched
 
 	constraintsPatch = &prompting.RuleConstraintsPatch{
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"read": &prompting.PermissionEntry{
 				Outcome:  prompting.OutcomeDeny,
 				Lifespan: prompting.LifespanForever,
@@ -3073,7 +3056,7 @@ func (s *requestrulesSuite) TestPatchRule(c *C) {
 	rule = patched
 
 	constraintsPatch = &prompting.RuleConstraintsPatch{
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"read": &prompting.PermissionEntry{
 				Outcome:  prompting.OutcomeDeny,
 				Lifespan: prompting.LifespanTimespan,
@@ -3102,7 +3085,7 @@ func (s *requestrulesSuite) TestPatchRule(c *C) {
 	rule = patched
 
 	constraintsPatch = &prompting.RuleConstraintsPatch{
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"read": &prompting.PermissionEntry{
 				Outcome:  origRule.Constraints.Permissions["read"].Outcome,
 				Lifespan: origRule.Constraints.Permissions["read"].Lifespan,
@@ -3188,7 +3171,7 @@ func (s *requestrulesSuite) TestPatchRuleErrors(c *C) {
 
 	// Invalid lifespan
 	badPatch := &prompting.RuleConstraintsPatch{
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"read": &prompting.PermissionEntry{
 				Outcome:  prompting.OutcomeAllow,
 				Lifespan: prompting.LifespanSingle,
@@ -3206,7 +3189,7 @@ func (s *requestrulesSuite) TestPatchRuleErrors(c *C) {
 		InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
 			Pattern: mustParsePathPattern(c, "/home/test/{foo,{Downloads,Documents}/**/*.{ical,mail,txt,gpg}}"),
 		},
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"read": &prompting.PermissionEntry{
 				Outcome:  prompting.OutcomeDeny,
 				Lifespan: prompting.LifespanForever,
@@ -3292,7 +3275,7 @@ func (s *requestrulesSuite) TestPatchRuleExpired(c *C) {
 		InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
 			Pattern: mustParsePathPattern(c, "/{foo,bar}"),
 		},
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"read": &prompting.PermissionEntry{
 				Outcome:  prompting.OutcomeDeny,
 				Lifespan: prompting.LifespanSession,
@@ -3357,7 +3340,7 @@ func (s *requestrulesSuite) TestPatchRuleExpired(c *C) {
 	// If the user session ends, any entries with LifespanSession expire
 	currSession = 0
 	constraintsPatch = &prompting.RuleConstraintsPatch{
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"execute": &prompting.PermissionEntry{
 				Outcome:  prompting.OutcomeAllow,
 				Lifespan: prompting.LifespanForever,

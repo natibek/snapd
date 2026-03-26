@@ -46,6 +46,56 @@ func mustParsePathPattern(c *C, patternStr string) *patterns.PathPattern {
 	return pattern
 }
 
+func (s *constraintsSuite) TestDirectUnmarshal(c *C) {
+
+	type jsonUnmarshaler interface {
+		UnmarshalJSON([]byte) error
+	}
+	permissionsJSON := json.RawMessage(`{"read":"access":{"outcome":"allow","lifespan":"forever"}}`)
+	constraintsJSON := json.RawMessage(`{"permissions":{"read":"access":{"outcome":"allow","lifespan":"forever"}}}`)
+
+	for _, testCase := range []struct {
+		t             jsonUnmarshaler
+		json          []byte
+		expectedPanic string
+	}{
+		{
+			t:             &prompting.Constraints{},
+			json:          constraintsJSON,
+			expectedPanic: "programmer error: cannot unmarshal Constraints directly; must use UnmarshalConstraints with a given interface",
+		},
+		{
+			t:             &prompting.RuleConstraints{},
+			json:          constraintsJSON,
+			expectedPanic: "programmer error: cannot unmarshal RuleConstraints directly; must use UnmarshalRuleConstraints with a given interface",
+		},
+		{
+			t:             &prompting.RuleConstraintsPatch{},
+			json:          constraintsJSON,
+			expectedPanic: "programmer error: cannot unmarshal RuleConstraintsPatch directly; must use UnmarshalRuleConstraintsPatch with a given interface",
+		},
+		{
+			t:             &prompting.PermissionMap{},
+			json:          permissionsJSON,
+			expectedPanic: "programmer error: cannot unmarshal PermissionMap directly; must use unmarshalPermissionMap with a given interface",
+		},
+		{
+			t:             &prompting.RulePermissionMap{},
+			json:          permissionsJSON,
+			expectedPanic: "programmer error: cannot unmarshal RulePermissionMap directly; must use unmarshalRulePermissionMap with a given interface",
+		},
+		{
+			t:             &prompting.RulePermissionMapPatch{},
+			json:          permissionsJSON,
+			expectedPanic: "programmer error: cannot unmarshal RulePermissionMapPatch directly; must use unmarshalRulePermissionMapPatch with a given interface",
+		},
+	} {
+		c.Assert(func() {
+			testCase.t.UnmarshalJSON(testCase.json)
+		}, PanicMatches, testCase.expectedPanic)
+	}
+}
+
 func (s *constraintsSuite) TestParseInterfaceSpecificConstraintsHappy(c *C) {
 	for _, testCase := range []struct {
 		iface               string
@@ -228,23 +278,6 @@ func (s *constraintsSuite) TestUnmarshalConstraintsHappy(c *C) {
 			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
 		},
 		{
-			// preserve empty entries when unmarshalling
-			iface: "home",
-			constraintsJSON: prompting.ConstraintsJSON{
-				"path-pattern": json.RawMessage(`"/home/test/foo"`),
-				"permissions":  json.RawMessage(`{"read":null}`),
-			},
-			expected: &prompting.Constraints{
-				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
-					Pattern: mustParsePathPattern(c, "/home/test/foo"),
-				},
-				Permissions: prompting.PermissionMap{
-					"read": nil,
-				},
-			},
-			expectedPattern: mustParsePathPattern(c, "/home/test/foo"),
-		},
-		{
 			iface: "camera",
 			constraintsJSON: prompting.ConstraintsJSON{
 				"permissions": json.RawMessage(`{"access":{"outcome":"allow","lifespan":"session"}}`),
@@ -308,6 +341,15 @@ func (s *constraintsSuite) TestUnmarshalConstraintsUnhappy(c *C) {
 				"permissions": json.RawMessage(`{"notreal":{"outcome":"allow","lifespan":"forever"},"write":{"outcome":"deny","lifespan":"session","duration":"shouldn't be here"},"execute":{"outcome":"allow","lifespan":"single"}}`),
 			},
 			expectedErr: `invalid duration: cannot have specified duration when lifespan is \"session\": \"shouldn't be here\"\ninvalid permissions for home interface: "notreal"`,
+		},
+		{
+			// preserve empty entries when unmarshalling
+			iface: "home",
+			constraintsJSON: prompting.ConstraintsJSON{
+				"path-pattern": json.RawMessage(`"/home/test/foo"`),
+				"permissions":  json.RawMessage(`{"read":null}`),
+			},
+			expectedErr: "empty permission map",
 		},
 		{
 			iface:           "camera",
@@ -1373,7 +1415,7 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsPatchHappy(c *C) {
 			},
 			expected: &prompting.RuleConstraintsPatch{
 				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{},
-				Permissions: prompting.PermissionMap{
+				Permissions: prompting.RulePermissionMapPatch{
 					"read": &prompting.PermissionEntry{
 						Outcome:  prompting.OutcomeAllow,
 						Lifespan: prompting.LifespanForever,
@@ -1388,7 +1430,7 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsPatchHappy(c *C) {
 			},
 			expected: &prompting.RuleConstraintsPatch{
 				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsEmpty{},
-				Permissions: prompting.PermissionMap{
+				Permissions: prompting.RulePermissionMapPatch{
 					"access": &prompting.PermissionEntry{
 						Outcome:  prompting.OutcomeDeny,
 						Lifespan: prompting.LifespanSession,
@@ -1403,7 +1445,7 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsPatchHappy(c *C) {
 			},
 			expected: &prompting.RuleConstraintsPatch{
 				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsEmpty{},
-				Permissions: prompting.PermissionMap{
+				Permissions: prompting.RulePermissionMapPatch{
 					"access": &prompting.PermissionEntry{
 						Outcome:  prompting.OutcomeAllow,
 						Lifespan: prompting.LifespanSession,
@@ -1421,7 +1463,7 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsPatchHappy(c *C) {
 				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
 					Pattern: mustParsePathPattern(c, "/home/test/foo"),
 				},
-				Permissions: prompting.PermissionMap{
+				Permissions: prompting.RulePermissionMapPatch{
 					"read": nil,
 					"write": &prompting.PermissionEntry{
 						Outcome:  prompting.OutcomeDeny,
@@ -1607,7 +1649,7 @@ func (s *constraintsSuite) TestPatchRuleConstraintsHappy(c *C) {
 				},
 			},
 			patch: &prompting.RuleConstraintsPatch{
-				Permissions: prompting.PermissionMap{
+				Permissions: prompting.RulePermissionMapPatch{
 					// Remove read permissions, let write permission expire,
 					// and add new execute permission
 					"read": nil,
@@ -1650,7 +1692,7 @@ func (s *constraintsSuite) TestPatchRuleConstraintsHappy(c *C) {
 				},
 			},
 			patch: &prompting.RuleConstraintsPatch{
-				Permissions: prompting.PermissionMap{
+				Permissions: prompting.RulePermissionMapPatch{
 					"execute": &prompting.PermissionEntry{
 						Outcome:  prompting.OutcomeDeny,
 						Lifespan: prompting.LifespanSession,
@@ -1697,7 +1739,7 @@ func (s *constraintsSuite) TestPatchRuleConstraintsHappy(c *C) {
 				},
 			},
 			patch: &prompting.RuleConstraintsPatch{
-				Permissions: prompting.PermissionMap{
+				Permissions: prompting.RulePermissionMapPatch{
 					"read": nil,
 					"execute": &prompting.PermissionEntry{
 						Outcome:  prompting.OutcomeAllow,
@@ -1729,7 +1771,7 @@ func (s *constraintsSuite) TestPatchRuleConstraintsHappy(c *C) {
 				},
 			},
 			patch: &prompting.RuleConstraintsPatch{
-				Permissions: prompting.PermissionMap{
+				Permissions: prompting.RulePermissionMapPatch{
 					"access": &prompting.PermissionEntry{
 						Outcome:  prompting.OutcomeAllow,
 						Lifespan: prompting.LifespanSession,
@@ -1758,7 +1800,7 @@ func (s *constraintsSuite) TestPatchRuleConstraintsHappy(c *C) {
 				},
 			},
 			patch: &prompting.RuleConstraintsPatch{
-				Permissions: prompting.PermissionMap{
+				Permissions: prompting.RulePermissionMapPatch{
 					"access": &prompting.PermissionEntry{
 						Outcome:  prompting.OutcomeAllow,
 						Lifespan: prompting.LifespanSession,
@@ -1894,7 +1936,7 @@ func (s *constraintsSuite) TestPatchRuleConstraintsUnhappy(c *C) {
 	}
 
 	goodPatch := &prompting.RuleConstraintsPatch{
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"write": nil,
 			"execute": &prompting.PermissionEntry{
 				Outcome:  prompting.OutcomeDeny,
@@ -1925,7 +1967,7 @@ func (s *constraintsSuite) TestPatchRuleConstraintsUnhappy(c *C) {
 	c.Check(result, DeepEquals, expectedResult)
 
 	badPatch := &prompting.RuleConstraintsPatch{
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			"read": &prompting.PermissionEntry{
 				Outcome:  prompting.OutcomeAllow,
 				Lifespan: prompting.LifespanSingle,
@@ -1948,7 +1990,7 @@ func (s *constraintsSuite) TestPatchRuleConstraintsUnhappy(c *C) {
 	c.Check(result, IsNil)
 
 	badPatch = &prompting.RuleConstraintsPatch{
-		Permissions: prompting.PermissionMap{
+		Permissions: prompting.RulePermissionMapPatch{
 			// Remove all permissions
 			"read": nil,
 		},
