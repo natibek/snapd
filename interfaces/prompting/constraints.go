@@ -649,6 +649,7 @@ func (pm PermissionMap) toRulePermissionMap(at At) (RulePermissionMap, error) {
 	rulePermissionMap := make(RulePermissionMap, len(pm))
 	for perm, entry := range pm {
 		if entry == nil {
+			// Should not occur, as permissions have their nil entires removed when unmarshalling
 			continue
 		}
 		rulePermissionEntry, err := entry.toRulePermissionEntry(at)
@@ -664,6 +665,7 @@ func (pm PermissionMap) toRulePermissionMap(at At) (RulePermissionMap, error) {
 		return nil, strutil.JoinErrors(errs...)
 	}
 	if len(rulePermissionMap) == 0 {
+		// Should not occur, as errors that cause skipped/removed entries are found when unmarshalling
 		return nil, fmt.Errorf("empty rule permission map")
 	}
 	return rulePermissionMap, nil
