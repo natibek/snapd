@@ -340,7 +340,7 @@ func (s *constraintsSuite) TestUnmarshalConstraintsUnhappy(c *C) {
 				// invalid permission and duration for session lifespan
 				"permissions": json.RawMessage(`{"notreal":{"outcome":"allow","lifespan":"forever"},"write":{"outcome":"deny","lifespan":"session","duration":"shouldn't be here"},"execute":{"outcome":"allow","lifespan":"single"}}`),
 			},
-			expectedErr: `invalid duration: cannot have specified duration when lifespan is \"session\": \"shouldn't be here\"\ninvalid permissions for home interface: "notreal"`,
+			expectedErr: `invalid duration: cannot have specified duration when lifespan is \"session\": \"shouldn't be here\"\ncannot create rule with lifespan \"single\"\ninvalid permissions for home interface: "notreal"`,
 		},
 		{
 			// preserve empty entries when unmarshalling
@@ -625,119 +625,9 @@ func (s *constraintsSuite) TestConstraintsToRuleConstraintsHappy(c *C) {
 				},
 			},
 		},
-		{
-			// One with a nil permission, which should be discarded
-			constraints: &prompting.Constraints{
-				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
-					Pattern: mustParsePathPattern(c, "/path/to/{foo,*or*,bar}{,/}**"),
-				},
-				Permissions: prompting.PermissionMap{
-					"read": nil,
-					"write": &prompting.PermissionEntry{
-						Outcome:  prompting.OutcomeDeny,
-						Lifespan: prompting.LifespanForever,
-					},
-					"execute": nil,
-				},
-			},
-			expected: &prompting.RuleConstraints{
-				InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
-					Pattern: mustParsePathPattern(c, "/path/to/{foo,*or*,bar}{,/}**"),
-				},
-				Permissions: prompting.RulePermissionMap{
-					"write": &prompting.RulePermissionEntry{
-						Outcome:  prompting.OutcomeDeny,
-						Lifespan: prompting.LifespanForever,
-					},
-				},
-			},
-		},
 	} {
-		result, err := testCase.constraints.ToRuleConstraints(at)
-		c.Check(err, IsNil)
+		result := testCase.constraints.ToRuleConstraints(at)
 		c.Check(result, DeepEquals, testCase.expected)
-	}
-}
-
-func (s *constraintsSuite) TestConstraintsToRuleConstraintsUnhappy(c *C) {
-	at := prompting.At{
-		Time:      time.Now(),
-		SessionID: prompting.IDType(0),
-	}
-
-	for _, testCase := range []struct {
-		perms  prompting.PermissionMap
-		errStr string
-	}{
-		{
-			perms:  nil,
-			errStr: `empty rule permission map`,
-		},
-		{
-			perms: prompting.PermissionMap{
-				"access": nil,
-			},
-			errStr: `empty rule permission map`,
-		},
-		{
-			perms: prompting.PermissionMap{
-				"read": &prompting.PermissionEntry{
-					Outcome:  prompting.OutcomeAllow,
-					Lifespan: prompting.LifespanSingle,
-				},
-			},
-			errStr: `cannot create rule with lifespan "single"`,
-		},
-		{
-			perms: prompting.PermissionMap{
-				"access": &prompting.PermissionEntry{
-					Outcome:  prompting.OutcomeAllow,
-					Lifespan: prompting.LifespanTimespan,
-				},
-			},
-			errStr: `invalid duration: cannot have unspecified duration when lifespan is "timespan".*`,
-		},
-		{
-			perms: prompting.PermissionMap{
-				"write": &prompting.PermissionEntry{
-					Outcome:  prompting.OutcomeDeny,
-					Lifespan: prompting.LifespanSession,
-					Duration: "5s",
-				},
-			},
-			errStr: `invalid duration: cannot have specified duration when lifespan is "session":.*`,
-		},
-		{
-			perms: prompting.PermissionMap{
-				"access": &prompting.PermissionEntry{
-					Outcome:  prompting.OutcomeDeny,
-					Lifespan: prompting.LifespanSession,
-				},
-			},
-			// Error will occur because current session is 0 (not found) below
-			errStr: prompting_errors.ErrNewSessionRuleNoSession.Error(),
-		},
-		{
-			perms: prompting.PermissionMap{
-				"read": &prompting.PermissionEntry{
-					Outcome:  prompting.OutcomeAllow,
-					Lifespan: prompting.LifespanTimespan,
-				},
-				"write": &prompting.PermissionEntry{
-					Outcome:  prompting.OutcomeDeny,
-					Lifespan: prompting.LifespanSession,
-					Duration: "5s",
-				},
-			},
-			errStr: joinErrorsUnordered(`invalid duration: cannot have unspecified duration when lifespan is "timespan": ""`, `invalid duration: cannot have specified duration when lifespan is "session":.*`),
-		},
-	} {
-		constraints := &prompting.Constraints{
-			Permissions: testCase.perms,
-		}
-		result, err := constraints.ToRuleConstraints(at)
-		c.Check(result, IsNil, Commentf("testCase: %+v", testCase))
-		c.Check(err, ErrorMatches, testCase.errStr, Commentf("testCase: %+v", testCase))
 	}
 }
 

@@ -31,10 +31,6 @@ import (
 )
 
 var (
-	// EmptyPermissionMap errors when unmarhalling results in empty permission maps after deleting entries
-	EmptyPermissionMap = errors.New("empty permission map")
-	NilEntry           = errors.New("empty entry")
-
 	// NotFound errors when a prompt or rule is not found
 	ErrPromptNotFound = errors.New("cannot find prompt with the given ID for the given user")
 	ErrRuleNotFound   = errors.New("cannot find rule with the given ID")

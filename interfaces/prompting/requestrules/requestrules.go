@@ -955,7 +955,7 @@ func newUserSessionID() prompting.IDType {
 }
 
 // Allow readOrAssignUserSessionID to be mocked in tests.
-var readOrAssignUserSessionID = (*RuleDB).readOrAssignUserSessionID
+var ReadOrAssignUserSessionID = (*RuleDB).readOrAssignUserSessionID
 
 // readOrAssignUserSessionID returns the existing user session ID for the given
 // user, if an ID exists, otherwise generates a new ID and writes it as an
@@ -1027,19 +1027,18 @@ func (rdb *RuleDB) AddRule(user uint32, snap string, iface string, constraints *
 		return nil, prompting_errors.ErrPromptingClosed
 	}
 
-	currSession, err := readOrAssignUserSessionID(rdb, user)
-	if err != nil && !errors.Is(err, errNoUserSession) {
+	currSession, err := ReadOrAssignUserSessionID(rdb, user)
+	// return all errors including when root tries to adjust rules for a user that is not logged in
+	if err != nil {
 		return nil, err
 	}
+	// currSession is never 0
 	at := prompting.At{
 		Time:      time.Now(),
 		SessionID: currSession,
 	}
 
-	newRule, err := rdb.makeNewRule(user, snap, iface, constraints, at)
-	if err != nil {
-		return nil, err
-	}
+	newRule := rdb.makeNewRule(user, snap, iface, constraints, at)
 	const save = true
 	newRule, _, err = rdb.addOrMergeRule(newRule, at, save)
 	if err != nil {
@@ -1058,11 +1057,8 @@ func (rdb *RuleDB) AddRule(user uint32, snap string, iface string, constraints *
 // constraints are converted to rule constraints at the given point in time.
 //
 // If any of the given parameters are invalid, returns an error.
-func (rdb *RuleDB) makeNewRule(user uint32, snap string, iface string, constraints *prompting.Constraints, at prompting.At) (*Rule, error) {
-	ruleConstraints, err := constraints.ToRuleConstraints(at)
-	if err != nil {
-		return nil, err
-	}
+func (rdb *RuleDB) makeNewRule(user uint32, snap string, iface string, constraints *prompting.Constraints, at prompting.At) *Rule {
+	ruleConstraints := constraints.ToRuleConstraints(at)
 
 	newRule := Rule{
 		Timestamp:   at.Time,
@@ -1072,7 +1068,7 @@ func (rdb *RuleDB) makeNewRule(user uint32, snap string, iface string, constrain
 		Constraints: ruleConstraints,
 	}
 
-	return &newRule, nil
+	return &newRule
 }
 
 // IsRequestAllowed checks whether a request with the given parameters is
@@ -1085,7 +1081,7 @@ func (rdb *RuleDB) makeNewRule(user uint32, snap string, iface string, constrain
 func (rdb *RuleDB) IsRequestAllowed(user uint32, snap string, iface string, path string, permissions []string) (allowedPerms []string, anyDenied bool, outstandingPerms []string, err error) {
 	allowedPerms = make([]string, 0, len(permissions))
 	outstandingPerms = make([]string, 0, len(permissions))
-	currSession, err := readOrAssignUserSessionID(rdb, user)
+	currSession, err := ReadOrAssignUserSessionID(rdb, user)
 	if err != nil && !errors.Is(err, errNoUserSession) {
 		return nil, false, nil, err
 	}
@@ -1423,7 +1419,7 @@ func (rdb *RuleDB) PatchRule(user uint32, id prompting.IDType, constraintsPatch 
 	// support patching it? Currently, we don't include fully expired rules
 	// in the output of Rules(), should the same be done here?
 
-	currSession, err := readOrAssignUserSessionID(rdb, user)
+	currSession, err := ReadOrAssignUserSessionID(rdb, user)
 	if err != nil && !errors.Is(err, errNoUserSession) {
 		return nil, err
 	}
@@ -1493,7 +1489,7 @@ func (cache userSessionIDCache) getUserSessionID(rdb *RuleDB, user uint32) (prom
 	if ok {
 		return sessionID, nil
 	}
-	sessionID, err := readOrAssignUserSessionID(rdb, user)
+	sessionID, err := ReadOrAssignUserSessionID(rdb, user)
 	if err != nil && !errors.Is(err, errNoUserSession) {
 		return 0, err
 	}
