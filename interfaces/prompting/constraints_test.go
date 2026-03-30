@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
 	. "gopkg.in/check.v1"
@@ -340,7 +341,7 @@ func (s *constraintsSuite) TestUnmarshalConstraintsUnhappy(c *C) {
 				// invalid permission and duration for session lifespan
 				"permissions": json.RawMessage(`{"notreal":{"outcome":"allow","lifespan":"forever"},"write":{"outcome":"deny","lifespan":"session","duration":"shouldn't be here"},"execute":{"outcome":"allow","lifespan":"single"}}`),
 			},
-			expectedErr: `invalid duration: cannot have specified duration when lifespan is \"session\": \"shouldn't be here\"\ncannot create rule with lifespan \"single\"\ninvalid permissions for home interface: "notreal"`,
+			expectedErr: joinErrorsUnordered(`invalid duration: cannot have specified duration when lifespan is \"session\": \"shouldn't be here\"`, `cannot create rule with lifespan \"single\"`, `invalid permissions for home interface: "notreal"`),
 		},
 		{
 			// preserve empty entries when unmarshalling
@@ -631,8 +632,22 @@ func (s *constraintsSuite) TestConstraintsToRuleConstraintsHappy(c *C) {
 	}
 }
 
-func joinErrorsUnordered(err1, err2 string) string {
-	return fmt.Sprintf("(%s\n%s|%s\n%s)", err1, err2, err2, err1)
+func joinErrorsUnordered(errs ...string) string {
+	if len(errs) == 1 {
+		return errs[0]
+	}
+
+	var parts []string
+	for i, err := range errs {
+		rest := make([]string, 0, len(errs)-1)
+		rest = append(rest, errs[:i]...)
+		rest = append(rest, errs[i+1:]...)
+
+		perm := joinErrorsUnordered(rest...)
+		parts = append(parts, fmt.Sprintf("%s\n%s", err, perm))
+	}
+	return fmt.Sprintf("(%s)", strings.Join(parts, "|"))
+
 }
 
 func (s *constraintsSuite) TestUnmarshalRuleConstraintsHappy(c *C) {
