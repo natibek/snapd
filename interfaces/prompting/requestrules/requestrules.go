@@ -1082,7 +1082,8 @@ func (rdb *RuleDB) IsRequestAllowed(user uint32, snap string, iface string, path
 	allowedPerms = make([]string, 0, len(permissions))
 	outstandingPerms = make([]string, 0, len(permissions))
 	currSession, err := ReadOrAssignUserSessionID(rdb, user)
-	if err != nil && !errors.Is(err, errNoUserSession) {
+	// return all errors including when root tries to adjust rules for a user that is not logged in
+	if err != nil {
 		return nil, false, nil, err
 	}
 	at := prompting.At{
@@ -1490,7 +1491,8 @@ func (cache userSessionIDCache) getUserSessionID(rdb *RuleDB, user uint32) (prom
 		return sessionID, nil
 	}
 	sessionID, err := ReadOrAssignUserSessionID(rdb, user)
-	if err != nil && !errors.Is(err, errNoUserSession) {
+	// return all errors including when root tries to adjust rules for a user that is not logged in
+	if err != nil {
 		return 0, err
 	}
 	cache[user] = sessionID

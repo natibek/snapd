@@ -37,6 +37,7 @@ var (
 	ErrRuleNotAllowed = errors.New("user not allowed to request the rule with the given ID")
 
 	// Validation errors which may be returned over the API
+	ErrValidatedMapHasNoPerms  = errors.New("validated permission map is empty")
 	ErrPatchedRuleHasNoPerms   = errors.New("cannot patch rule to have no permissions")
 	ErrNewSessionRuleNoSession = errors.New(`cannot create rule with lifespan "session" when user session is not present`)
 

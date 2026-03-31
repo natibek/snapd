@@ -507,10 +507,12 @@ type permissionEntryType interface {
 	isNil() bool
 }
 
-// unmarshalPermissionEntryMap unmarshals given data into a PermissionMap/RulePermissionMap, checking
+// unmarshalPermissionEntryMap unmarshals given data into a
+// PermissionMap/RulePermissionMap/RulePermissionMapPatch, checking
 // that all permissions are valid with respect to the given interface.
-// Always want to preserve nil permissions when unmarshalling, and then either ignore them
-// in toRulePermissionMap or use them in PatchRuleConstraints
+// If preserveNilEntries is true (should only be the case for
+// RulePermissionMapPatch), nil permissions are not removed. Otherwise, they
+// are removed from the final permission map.
 func unmarshalPermissionEntryMap[T permissionEntryType](iface string, permissionsJSON json.RawMessage, preserveNilEntries bool) (map[string]T, error) {
 	availablePerms, ok := interfacePermissionsAvailable[iface]
 	if !ok {
@@ -530,7 +532,9 @@ func unmarshalPermissionEntryMap[T permissionEntryType](iface string, permission
 			continue
 		}
 
-		// checking nil entries with small function since it is complicated to do directly with interface
+		// checking nil entries with small method since it is complicated
+		// to do directly with interface. Not expected for RulePermissionMap
+		// since it is validated before marshalling to disk.
 		if entry.isNil() {
 			nilPerms = append(nilPerms, perm)
 			continue
@@ -547,7 +551,7 @@ func unmarshalPermissionEntryMap[T permissionEntryType](iface string, permission
 		}
 	}
 	if len(permissionMap) == 0 {
-		errs = append(errs, fmt.Errorf("empty permission map"))
+		errs = append(errs, prompting_errors.ErrValidatedMapHasNoPerms)
 	}
 
 	if len(invalidPerms) > 0 {
@@ -570,7 +574,8 @@ func (c *PermissionMap) UnmarshalJSON([]byte) error {
 }
 
 // unmarshalPermissionMap unmarshals given data into a PermissionMap, checking
-// that all permissions are valid with respect to the given interface without preserving nil entries.
+// that all permissions are valid with respect to the given interface without
+// preserving nil entries.
 func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage) (PermissionMap, error) {
 	const preserveNilEntries = false
 	return unmarshalPermissionEntryMap[*PermissionEntry](iface, permissionsJSON, preserveNilEntries)
@@ -578,7 +583,8 @@ func unmarshalPermissionMap(iface string, permissionsJSON json.RawMessage) (Perm
 
 // toRulePermissionMap converts the PermissionMap to a RulePermissionMap,
 // using the given at information to convert each PermissionEntry to a
-// RulePermissionEntry.
+// RulePermissionEntry. The caller must ensure that there are no permissions
+// with nil entries.
 func (pm PermissionMap) toRulePermissionMap(at At) RulePermissionMap {
 	rulePermissionMap := make(RulePermissionMap, len(pm))
 	for perm, entry := range pm {
@@ -599,7 +605,8 @@ func (c *RulePermissionMap) UnmarshalJSON([]byte) error {
 }
 
 // unmarshalRulePermissionMap unmarshals given data into a RulePermissionMap,
-// checking that all permissions are valid with respect to the given interface without preserving nil entries.
+// checking that all permissions are valid with respect to the given interface
+// without preserving nil entries.
 func unmarshalRulePermissionMap(iface string, permissionsJSON json.RawMessage) (RulePermissionMap, error) {
 	const preserveNilEntries = false
 	return unmarshalPermissionEntryMap[*RulePermissionEntry](iface, permissionsJSON, preserveNilEntries)
@@ -647,8 +654,9 @@ func (c *RulePermissionMapPatch) UnmarshalJSON([]byte) error {
 	panic("programmer error: cannot unmarshal RulePermissionMapPatch directly; must use unmarshalRulePermissionMapPatch with a given interface")
 }
 
-// unmarshalRulePermissionMapPatch unmarshals given data into a RulePermissionMapPatch, checking
-// that all permissions are valid with respect to the given interface and preserving nil entries.
+// unmarshalRulePermissionMapPatch unmarshals given data into a
+// RulePermissionMapPatch, checking that all permissions are valid with respect
+// to the given interface and preserving nil entries.
 func unmarshalRulePermissionMapPatch(iface string, permissionsJSON json.RawMessage) (RulePermissionMapPatch, error) {
 	const preserveNilEntries = true
 	return unmarshalPermissionEntryMap[*PermissionEntry](iface, permissionsJSON, preserveNilEntries)
@@ -676,7 +684,6 @@ func (pm RulePermissionMapPatch) patchRulePermissionMap(existing RulePermissionM
 			newPermissions[perm] = entry
 		}
 	}
-	var errs []error
 	for perm, entry := range pm {
 		if entry == nil {
 			// nil value for permission indicates that it should be removed.
@@ -685,17 +692,8 @@ func (pm RulePermissionMapPatch) patchRulePermissionMap(existing RulePermissionM
 			delete(newPermissions, perm)
 			continue
 		}
-
-		if err := entry.validate(); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-
 		ruleEntry := entry.toRulePermissionEntry(at)
 		newPermissions[perm] = ruleEntry
-	}
-	if len(errs) > 0 {
-		return nil, strutil.JoinErrors(errs...)
 	}
 	if len(newPermissions) == 0 {
 		return nil, prompting_errors.ErrPatchedRuleHasNoPerms
@@ -719,7 +717,8 @@ func (e *PermissionEntry) isNil() bool {
 }
 
 // validate checks that the entry has a valid outcome, and that it has a
-// lifespan with an appropriate duration. The caller must ensure that the given entry is no nil
+// lifespan with an appropriate duration. The caller must ensure that the
+// given entry is not nil.
 func (e *PermissionEntry) validate() error {
 	if _, err := e.Outcome.AsBool(); err != nil {
 		return err
@@ -739,10 +738,12 @@ func (e *PermissionEntry) validate() error {
 // If the lifespan is LifespanTimespan, then the expiration is computed as the
 // entry's duration after the given point in time. If the lifespan is
 // LifepanSession, then the sessionID at the given point in time must be
-// non-zero, and is saved in the RulePermissionEntry. Caller validates that at.SessionID is not 0.
+// non-zero, and is saved in the RulePermissionEntry. Caller validates that
+// at.SessionID is not 0.
 func (e *PermissionEntry) toRulePermissionEntry(at At) *RulePermissionEntry {
 	var sessionIDToUse IDType
 	if e.Lifespan == LifespanSession {
+		// sessionIDToUse should be 0 unless the lifespan is LifespanSession
 		sessionIDToUse = at.SessionID
 	}
 	// Error should not occur with ParseDuration, since the permission entry should already
@@ -804,7 +805,8 @@ func (e *RulePermissionEntry) isNil() bool {
 
 // validate checks that the entry has a valid outcome, that its lifespan is
 // valid for a rule (i.e. not LifespanSingle), and that it has appropriate
-// expiration information for that lifespan. The caller must ensure that the given entry is not nil
+// expiration information for that lifespan. The caller must ensure that the
+// given entry is not nil.
 func (e *RulePermissionEntry) validate() error {
 	if _, err := e.Outcome.AsBool(); err != nil {
 		return err

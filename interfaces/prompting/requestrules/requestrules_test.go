@@ -2818,6 +2818,8 @@ func (s *requestrulesSuite) TestRemoveRulesForSnapInterfaceErrors(c *C) {
 }
 
 func (s *requestrulesSuite) TestLoadEmptyPermissionMap(c *C) {
+	// This should never happen as the rules that are marshalled to disk are
+	// validated prior to marshalling.
 	logbuf, restore := logger.MockLogger()
 	defer restore()
 
@@ -2843,7 +2845,7 @@ func (s *requestrulesSuite) TestLoadEmptyPermissionMap(c *C) {
 
 	requestrules.New(s.defaultNotifyRule)
 	logErr := fmt.Errorf("%s", strings.TrimSpace(logbuf.String()))
-	c.Check(logErr, ErrorMatches, ".*cannot load rule database: empty permission map; using new empty rule database")
+	c.Check(logErr, ErrorMatches, ".*cannot load rule database: validated permission map is empty; using new empty rule database")
 }
 
 func (s *requestrulesSuite) TestPatchRule(c *C) {
@@ -3091,21 +3093,6 @@ func (s *requestrulesSuite) TestPatchRuleErrors(c *C) {
 	s.checkWrittenRuleDB(c, rules)
 	s.checkNewNoticesSimple(c, nil)
 
-	// Invalid lifespan
-	badPatch := &prompting.RuleConstraintsPatch{
-		Permissions: prompting.RulePermissionMapPatch{
-			"read": &prompting.PermissionEntry{
-				Outcome:  prompting.OutcomeAllow,
-				Lifespan: prompting.LifespanSingle,
-			},
-		},
-	}
-	result, err = rdb.PatchRule(rule.User, rule.ID, badPatch)
-	c.Check(err, ErrorMatches, prompting_errors.NewRuleLifespanSingleError(prompting.SupportedRuleLifespans).Error())
-	c.Check(result, IsNil)
-	s.checkWrittenRuleDB(c, rules)
-	s.checkNewNoticesSimple(c, nil)
-
 	// Conflicting with other rule
 	conflictingPatch := &prompting.RuleConstraintsPatch{
 		InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
@@ -3330,13 +3317,13 @@ func (s *requestrulesSuite) TestUserSessionIDCache(c *C) {
 	// Get a user which has no session
 	for i := 0; i < 5; i++ {
 		result, err := cache.GetUserSessionID(rdb, 11235)
-		// Error should be nil even though there was no session
-		c.Assert(err, IsNil)
+		// Should propagate error when no session is found
+		c.Assert(err, ErrorMatches, `.*: cannot find systemd user session tmpfs for user`)
 		c.Assert(result, Equals, prompting.IDType(0))
 	}
-	// Check that readOrAssignUserSessionID was only called once
+	// Check that readOrAssignUserSessionID was called 5 times
 	count, ok = checkedDiskForUser[11235]
-	c.Assert(count, Equals, 1)
+	c.Assert(count, Equals, 5)
 	c.Assert(ok, Equals, true)
 
 	// Get a user which causes error

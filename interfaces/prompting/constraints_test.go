@@ -350,7 +350,7 @@ func (s *constraintsSuite) TestUnmarshalConstraintsUnhappy(c *C) {
 				"path-pattern": json.RawMessage(`"/home/test/foo"`),
 				"permissions":  json.RawMessage(`{"read":null}`),
 			},
-			expectedErr: "empty permission map",
+			expectedErr: prompting_errors.ErrValidatedMapHasNoPerms.Error(),
 		},
 		{
 			iface:           "camera",
@@ -788,7 +788,7 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsUnhappy(c *C) {
 				// do not preserve empty entries when unmarhalling
 				"permissions": json.RawMessage(`{"read":null}`),
 			},
-			expectedErr: "empty permission map",
+			expectedErr: prompting_errors.ErrValidatedMapHasNoPerms.Error(),
 		},
 	} {
 		result, err := prompting.UnmarshalRuleConstraints(testCase.iface, testCase.constraintsJSON)
@@ -1871,33 +1871,13 @@ func (s *constraintsSuite) TestPatchRuleConstraintsUnhappy(c *C) {
 	c.Check(err, IsNil)
 	c.Check(result, DeepEquals, expectedResult)
 
+	// since patches are validated when unmarshalling, the only possible error is
+	// an empty patched rule
 	badPatch := &prompting.RuleConstraintsPatch{
 		Permissions: prompting.RulePermissionMapPatch{
-			"read": &prompting.PermissionEntry{
-				Outcome:  prompting.OutcomeAllow,
-				Lifespan: prompting.LifespanSingle,
-			},
-			"create": &prompting.PermissionEntry{
-				Outcome:  prompting.OutcomeAllow,
-				Lifespan: prompting.LifespanForever,
-			},
-			"lock": nil, // even if invalid permission is meant to be removed, include it
-			"execute": &prompting.PermissionEntry{
-				Outcome:  prompting.OutcomeAllow,
-				Lifespan: prompting.LifespanTimespan,
-			},
-		},
-	}
-	expected := joinErrorsUnordered(`cannot create rule with lifespan "single"`, `invalid duration: cannot have unspecified duration when lifespan is "timespan": ""`)
-
-	result, err = badPatch.PatchRuleConstraints(goodRule, patchAt)
-	c.Check(err, ErrorMatches, expected)
-	c.Check(result, IsNil)
-
-	badPatch = &prompting.RuleConstraintsPatch{
-		Permissions: prompting.RulePermissionMapPatch{
-			// Remove all permissions
-			"read": nil,
+			"read":    nil,
+			"lock":    nil, // even if invalid permission is meant to be removed, include it
+			"execute": nil,
 		},
 	}
 	result, err = badPatch.PatchRuleConstraints(goodRule, patchAt)
