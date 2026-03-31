@@ -1804,7 +1804,6 @@ func (s *requestrulesSuite) TestAddRulePartiallyExpired(c *C) {
 	snap := "firefox"
 	iface := "home"
 
-	s.currSession = prompting.IDType(0x12345)
 	constraints1 := &prompting.Constraints{
 		InterfaceSpecific: &prompting.InterfaceSpecificConstraintsHome{
 			Pattern: mustParsePathPattern(c, "/path/to/{foo,bar}"),
@@ -2018,7 +2017,6 @@ func (s *requestrulesSuite) TestIsRequestAllowed(c *C) {
 }
 
 func (s *requestrulesSuite) TestIsPathPermAllowedSimple(c *C) {
-	s.currSession = prompting.IDType(0x12345)
 	// Target
 	user := s.defaultUser
 	snap := "firefox"
@@ -2130,7 +2128,6 @@ func (s *requestrulesSuite) TestIsPathPermAllowedSimple(c *C) {
 }
 
 func (s *requestrulesSuite) TestIsPathPermAllowedPrecedence(c *C) {
-	s.currSession = prompting.IDType(0x12345)
 	// Target
 	user := s.defaultUser
 	snap := "firefox"
@@ -2200,7 +2197,6 @@ func (s *requestrulesSuite) TestIsPathPermAllowedPrecedence(c *C) {
 }
 
 func (s *requestrulesSuite) TestIsPathPermAllowedExpiration(c *C) {
-	s.currSession = prompting.IDType(0x12345)
 	// Target
 	user := s.defaultUser
 	snap := "firefox"
@@ -2308,8 +2304,6 @@ func (s *requestrulesSuite) TestIsPathPermAllowedSession(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(rdb, NotNil)
 
-	// Add all rules initially with session ID 0x12345
-	s.currSession = prompting.IDType(0x12345)
 	// Define another session ID which rules will change to later to emulate expiration
 	otherSession := prompting.IDType(0xabcd)
 	var addedRules []*requestrules.Rule
@@ -2480,8 +2474,6 @@ func (s *requestrulesSuite) prepRuleDBForRulesForSnapInterface(c *C, rdb *reques
 }
 
 func (s *requestrulesSuite) TestRulesExpired(c *C) {
-	s.currSession = prompting.IDType(0x12345)
-
 	rdb, err := requestrules.New(s.defaultNotifyRule)
 	c.Assert(err, IsNil)
 	c.Assert(rdb, NotNil)
@@ -2855,7 +2847,6 @@ func (s *requestrulesSuite) TestLoadEmptyPermissionMap(c *C) {
 }
 
 func (s *requestrulesSuite) TestPatchRule(c *C) {
-	s.currSession = prompting.IDType(0x12345)
 	rdb, err := requestrules.New(s.defaultNotifyRule)
 	c.Assert(err, IsNil)
 
@@ -3162,7 +3153,6 @@ func (s *requestrulesSuite) TestPatchRuleErrors(c *C) {
 }
 
 func (s *requestrulesSuite) TestPatchRuleExpired(c *C) {
-	s.currSession = prompting.IDType(0x12345)
 	rdb, err := requestrules.New(s.defaultNotifyRule)
 	c.Assert(err, IsNil)
 
