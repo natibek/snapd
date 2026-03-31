@@ -52,6 +52,7 @@ func formatPrice(val float64, currency string) string {
 // snap, in order to present a brief summary of it.
 type Notes struct {
 	SnapType         snap.Type
+	Components       []client.Component
 	Private          bool
 	DevMode          bool
 	JailMode         bool
@@ -94,6 +95,7 @@ func NotesFromLocal(snp *client.Snap) *Notes {
 	}
 	return &Notes{
 		SnapType:         snap.Type(snp.Type),
+		Components:       snp.Components,
 		Private:          snp.Private,
 		DevMode:          snp.DevMode,
 		Classic:          !snp.JailMode && (snp.Confinement == client.ClassicConfinement),
@@ -122,6 +124,22 @@ func (n *Notes) String() string {
 	default:
 		ns = append(ns, string(n.SnapType))
 	}
+
+	available := len(n.Components)
+	if available > 0 {
+		var installed int
+		for _, comp := range n.Components {
+			if comp.InstallDate != nil {
+				installed += 1
+			}
+		}
+		if installed > 0 {
+			ns = append(ns, i18n.G(fmt.Sprintf("components[%d/%d]", installed, available)))
+		} else {
+			ns = append(ns, i18n.G(fmt.Sprintf("components[%d]", available)))
+		}
+	}
+
 	if n.Disabled {
 		// TRANSLATORS: if possible, a single short word
 		ns = append(ns, i18n.G("disabled"))
