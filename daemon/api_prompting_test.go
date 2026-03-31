@@ -542,6 +542,18 @@ func (s *promptingSuite) TestPromptingError(c *C) {
 			},
 		},
 		{
+			err: prompting_errors.ErrValidatedMapHasNoPerms,
+			body: map[string]any{
+				"result": map[string]any{
+					"message": "validated permission map is empty",
+					"kind":    "interfaces-requests-invalid-fields",
+				},
+				"status":      "Bad Request",
+				"status-code": 400.0,
+				"type":        "error",
+			},
+		},
+		{
 			err: prompting_errors.ErrPatchedRuleHasNoPerms,
 			body: map[string]any{
 				"result": map[string]any{

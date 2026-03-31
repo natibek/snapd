@@ -270,6 +270,9 @@ func promptingError(err error) *apiError {
 		if errors.As(err, &parseErr) {
 			apiErr.Value = (*promptingParseError)(parseErr)
 		}
+	case errors.Is(err, prompting_errors.ErrValidatedMapHasNoPerms):
+		apiErr.Status = 400
+		apiErr.Kind = client.ErrorKindInterfacesRequestsInvalidFields
 	case errors.Is(err, prompting_errors.ErrPatchedRuleHasNoPerms):
 		apiErr.Status = 400
 		apiErr.Kind = client.ErrorKindInterfacesRequestsPatchedRuleHasNoPermissions
