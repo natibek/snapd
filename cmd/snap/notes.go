@@ -137,9 +137,9 @@ func (n *Notes) String() string {
 	}
 
 	if n.InstalledComponents > 0 {
-		ns = append(ns, i18n.G(fmt.Sprintf("components[%d/%d]", n.InstalledComponents, n.AvailableComponents)))
+		ns = append(ns, fmt.Sprintf("components[%d/%d]", n.InstalledComponents, n.AvailableComponents))
 	} else if n.AvailableComponents > 0 {
-		ns = append(ns, i18n.G(fmt.Sprintf("components[%d]", n.AvailableComponents)))
+		ns = append(ns, fmt.Sprintf("components[%d]", n.AvailableComponents))
 	}
 
 	if n.Disabled {
