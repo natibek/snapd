@@ -344,13 +344,12 @@ func (s *constraintsSuite) TestUnmarshalConstraintsUnhappy(c *C) {
 			expectedErr: joinErrorsUnordered(`invalid duration: cannot have specified duration when lifespan is \"session\": \"shouldn't be here\"`, `cannot create rule with lifespan \"single\"`, `invalid permissions for home interface: "notreal"`),
 		},
 		{
-			// preserve empty entries when unmarshalling
 			iface: "home",
 			constraintsJSON: prompting.ConstraintsJSON{
 				"path-pattern": json.RawMessage(`"/home/test/foo"`),
 				"permissions":  json.RawMessage(`{"read":null}`),
 			},
-			expectedErr: prompting_errors.ErrValidatedMapHasNoPerms.Error(),
+			expectedErr: "invalid permissions for home interface: permissions empty",
 		},
 		{
 			iface:           "camera",
@@ -782,13 +781,11 @@ func (s *constraintsSuite) TestUnmarshalRuleConstraintsUnhappy(c *C) {
 			expectedErr: "invalid permissions for audio-record interface: \"bad\"",
 		},
 		{
-			iface: "home",
+			iface: "audio-record",
 			constraintsJSON: prompting.ConstraintsJSON{
-				"path-pattern": json.RawMessage(`"/home/test/foo"`),
-				// do not preserve empty entries when unmarhalling
-				"permissions": json.RawMessage(`{"read":null}`),
+				"permissions": json.RawMessage(`{"access":null}`),
 			},
-			expectedErr: prompting_errors.ErrValidatedMapHasNoPerms.Error(),
+			expectedErr: "invalid permissions for audio-record interface: permissions empty",
 		},
 	} {
 		result, err := prompting.UnmarshalRuleConstraints(testCase.iface, testCase.constraintsJSON)

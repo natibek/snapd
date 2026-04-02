@@ -551,7 +551,7 @@ func unmarshalPermissionEntryMap[T permissionEntryType](iface string, permission
 		}
 	}
 	if len(permissionMap) == 0 {
-		errs = append(errs, prompting_errors.ErrValidatedMapHasNoPerms)
+		errs = append(errs, prompting_errors.NewPermissionsEmptyError(iface, availablePerms))
 	}
 
 	if len(invalidPerms) > 0 {
