@@ -1056,7 +1056,7 @@ func (rdb *RuleDB) AddRule(user uint32, snap string, iface string, constraints *
 // Constructs a new rule with the given parameters as values. The given
 // constraints are converted to rule constraints at the given point in time.
 //
-// If any of the given parameters are invalid, returns an error.
+// The caller is expected to validate the constraints and interface.
 func (rdb *RuleDB) makeNewRule(user uint32, snap string, iface string, constraints *prompting.Constraints, at prompting.At) *Rule {
 	ruleConstraints := constraints.ToRuleConstraints(at)
 
@@ -1420,6 +1420,8 @@ func (rdb *RuleDB) PatchRule(user uint32, id prompting.IDType, constraintsPatch 
 	// in the output of Rules(), should the same be done here?
 
 	currSession, err := ReadOrAssignUserSessionID(rdb, user)
+	// return all errors including when root tries to adjust rules for a
+	// user that is not logged in
 	if err != nil {
 		return nil, err
 	}

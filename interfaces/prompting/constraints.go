@@ -269,8 +269,8 @@ func (c *Constraints) ContainPermissions(permissions []string) bool {
 	return true
 }
 
-// ToRuleConstraints validates the receiving Constraints and converts it to
-// RuleConstraints.
+// ToRuleConstraints converts the receiving Constraints to RuleConstraints.
+// The caller must ensure that there are no permissions with nil entries.
 func (c *Constraints) ToRuleConstraints(at At) *RuleConstraints {
 	rulePermissions := c.Permissions.toRulePermissionMap(at)
 	ruleConstraints := &RuleConstraints{
@@ -351,8 +351,7 @@ const (
 )
 
 // PruneExpired prunes any permissions from the permission map which have
-// expired at the given point in time. If all permissions have expired, then
-// returns true.
+// expired at the given point in time.
 func (c *RuleConstraints) PruneExpired(at At) PermExpirationStatus {
 	// XXX: this is called only when loading rules from disk.
 	return c.Permissions.pruneExpired(at)
@@ -614,7 +613,8 @@ func unmarshalRulePermissionMap(iface string, permissionsJSON json.RawMessage) (
 
 // pruneExpired prunes any permissions from the permission map which have
 // expired at the given point in time. If all permissions have expired, then
-// returns true.
+// returns AllPermsExpired. If any permissions have expired, then returns
+// AnyPermsExpired. Otherwise, returns NoPermsExpired.
 func (pm RulePermissionMap) pruneExpired(at At) PermExpirationStatus {
 	var expiredPerms []string
 	for perm, entry := range pm {
@@ -746,8 +746,8 @@ func (e *PermissionEntry) toRulePermissionEntry(at At) *RulePermissionEntry {
 		// sessionIDToUse should be 0 unless the lifespan is LifespanSession
 		sessionIDToUse = at.SessionID
 	}
-	// Error should not occur with ParseDuration, since the permission entry should already
-	// have been validated.
+	// Error should not occur with ParseDuration, since the permission entry
+	// should already have been validated.
 	expiration, _ := e.Lifespan.ParseDuration(e.Duration, at.Time)
 	rulePermissionEntry := &RulePermissionEntry{
 		Outcome:    e.Outcome,
