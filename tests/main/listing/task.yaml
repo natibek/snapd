@@ -97,7 +97,7 @@ execute: |
 
     echo "Install test-snap-with-components and test if notes column contains hints about components"
     snap install test-snap-with-components
-    snap list --all | MATCH "^test-snap-with-components +$NUMERIC_VERSION +$REV .* +components\[3\] *$"
+    snap list --all | MATCH "^test-snap-with-components +$NUMERIC_VERSION +$NUMBER_REV .* +components\[3\] *$"
 
     snap install test-snap-with-components+one
-    snap list --all | MATCH "^test-snap-with-components +$NUMERIC_VERSION +$REV .* +components\[1/3\] *$"
+    snap list --all | MATCH "^test-snap-with-components +$NUMERIC_VERSION +$NUMBER_REV .* +components\[1/3\] *$"
