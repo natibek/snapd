@@ -120,7 +120,7 @@ func (e fakeNetError) Timeout() bool   { return e.timeout }
 func (e fakeNetError) Temporary() bool { return e.temporary }
 
 func (s *errorsSuite) TestErrToResponse(c *C) {
-	aie := &snap.AlreadyInstalledError{Snap: "foo"}
+	aie := &snap.AlreadyInstalledError{Snaps: []string{"foo"}}
 	nie := &snap.NotInstalledError{Snap: "foo"}
 	scce := &snapstate.ChangeConflictError{Snap: "foo"}
 	ndme := &snapstate.SnapNeedsDevModeError{Snap: "foo"}

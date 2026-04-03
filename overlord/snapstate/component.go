@@ -68,10 +68,15 @@ func InstallComponents(
 		// we only check for already installed components when no validation
 		// sets are provided, since this will allow us to refresh and install
 		// new components at the same time when resolving validation sets
+		var installed []string
 		for _, comp := range names {
 			if snapst.CurrentComponentSideInfo(naming.NewComponentRef(info.SnapName(), comp)) != nil {
-				return nil, snap.AlreadyInstalledComponentError{Component: comp}
+				installed = append(installed, comp)
 			}
+		}
+
+		if len(installed) > 0 {
+			return nil, snap.AlreadyInstalledError{Components: map[string][]string{info.SnapName(): installed}}
 		}
 	}
 

@@ -753,7 +753,7 @@ func (s *storeInstallGoal) validateAndPrune(st *state.State, installedSnaps map[
 		snapst, ok := installedSnaps[sn.InstanceName]
 		if ok && snapst.IsInstalled() {
 			if !sn.SkipIfPresent {
-				return &snap.AlreadyInstalledError{Snap: sn.InstanceName}
+				return &snap.AlreadyInstalledError{Snaps: []string{sn.InstanceName}}
 			}
 			continue
 		}

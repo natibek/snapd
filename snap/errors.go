@@ -21,22 +21,28 @@ package snap
 
 import (
 	"fmt"
+	"strings"
 )
 
 type AlreadyInstalledError struct {
-	Snap string
+	Snaps      []string
+	Components map[string][]string
 }
 
 func (e AlreadyInstalledError) Error() string {
-	return fmt.Sprintf("snap %q is already installed", e.Snap)
-}
+	var errs []string
+	for _, snap := range e.Snaps {
+		errs = append(errs, fmt.Sprintf("snap %q is already installed", snap))
+	}
 
-type AlreadyInstalledComponentError struct {
-	Component string
-}
+	for _, components := range e.Components {
+		for _, component := range components {
+			errs = append(errs, fmt.Sprintf("component %q is already installed", component))
+		}
 
-func (e AlreadyInstalledComponentError) Error() string {
-	return fmt.Sprintf("component %q is already installed", e.Component)
+	}
+
+	return strings.Join(errs, ",")
 }
 
 type NotInstalledError struct {
