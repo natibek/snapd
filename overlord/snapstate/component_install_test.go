@@ -1154,7 +1154,7 @@ func (s *snapmgrTestSuite) TestInstallComponentsAlreadyInstalledError(c *C) {
 
 	_, err := snapstate.InstallComponents(context.TODO(), s.state, []string{"one", "two", "three"}, info, nil, snapstate.Options{})
 
-	expectedErr := snap.AlreadyInstalledError{Components: map[string][]string{snapName: []string{"one", "two"}}}
+	expectedErr := snap.AlreadyInstalledError{Components: map[string][]string{snapName: {"one", "two"}}}
 	c.Assert(err, DeepEquals, expectedErr)
 }
 
