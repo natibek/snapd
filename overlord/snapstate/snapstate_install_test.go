@@ -353,7 +353,8 @@ func (s *snapmgrTestSuite) TestInstallAlreadyInstalled(c *C) {
 	opts := &snapstate.RevisionOptions{Channel: "some-channel"}
 	_, err := snapstate.Install(context.Background(), s.state, "some-snap", opts, 0, snapstate.Flags{})
 	c.Assert(err, NotNil)
-	c.Check(err, ErrorMatches, `snap "some-snap" is already installed`)
+	expectedErr := snap.AlreadyInstalledError{Snaps: []string{"some-snap"}}
+	c.Check(err, ErrorMatches, expectedErr.Error())
 	c.Check(err, FitsTypeOf, &snap.AlreadyInstalledError{})
 }
 
