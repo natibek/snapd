@@ -354,8 +354,7 @@ func (s *snapmgrTestSuite) TestInstallAlreadyInstalled(c *C) {
 	_, err := snapstate.Install(context.Background(), s.state, "some-snap", opts, 0, snapstate.Flags{})
 	c.Assert(err, NotNil)
 	expectedErr := snap.AlreadyInstalledError{Snaps: []string{"some-snap"}}
-	c.Check(err, ErrorMatches, expectedErr.Error())
-	c.Check(err, FitsTypeOf, &snap.AlreadyInstalledError{})
+	c.Assert(err, testutil.ErrorIs, expectedErr)
 }
 
 func (s *snapmgrTestSuite) TestInstallInvalidOptions(c *C) {

@@ -379,7 +379,11 @@ func errToResponse(err error, snaps []string, fallback errorResponder, format st
 		case *snap.AlreadyInstalledError:
 			// TODO: handle error for multiple snaps and components
 			kind = client.ErrorKindSnapAlreadyInstalled
-			snapName = err.Snaps[0]
+			if len(err.Snaps) == 1 {
+				snapName = err.Snaps[0]
+			} else {
+				handled = false
+			}
 		case *snap.NotInstalledError:
 			kind = client.ErrorKindSnapNotInstalled
 			snapName = err.Snap

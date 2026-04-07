@@ -30,19 +30,70 @@ type AlreadyInstalledError struct {
 }
 
 func (e AlreadyInstalledError) Error() string {
-	var errs []string
-	for _, snap := range e.Snaps {
-		errs = append(errs, fmt.Sprintf("snap %q is already installed", snap))
-	}
-
-	for _, components := range e.Components {
-		for _, component := range components {
-			errs = append(errs, fmt.Sprintf("component %q is already installed", component))
+	var comps []string
+	for snap, components := range e.Components {
+		for _, comp := range components {
+			comps = append(comps, SnapComponentName(snap, comp))
 		}
-
 	}
 
-	return strings.Join(errs, ",")
+	builder := strings.Builder{}
+	if len(e.Snaps) == 1 {
+		builder.WriteString(fmt.Sprintf("snap %q ", e.Snaps[0]))
+	} else if len(e.Snaps) > 1 {
+		builder.WriteString(fmt.Sprintf("snaps %q ", strings.Join(e.Snaps, ",")))
+	}
+
+	if len(e.Snaps) > 0 && len(comps) > 0 {
+		builder.WriteString("and ")
+	}
+
+	if len(comps) == 1 {
+		builder.WriteString(fmt.Sprintf("component %q ", comps[0]))
+	} else if len(comps) > 1 {
+		builder.WriteString(fmt.Sprintf("components %q ", strings.Join(comps, ",")))
+	}
+
+	if len(e.Snaps) > 1 || len(comps) > 1 {
+		builder.WriteString("are already installed")
+	} else {
+		builder.WriteString("is already installed")
+	}
+
+	return builder.String()
+}
+
+func (e AlreadyInstalledError) Is(err error) bool {
+	other, ok := err.(AlreadyInstalledError)
+	if !ok {
+		return false
+	}
+
+	if !slicesEqual(e.Snaps, other.Snaps) {
+		return false
+	}
+
+	for snap, comps := range e.Components {
+		otherComps, ok := other.Components[snap]
+		if !ok || !slicesEqual(comps, otherComps) {
+			return false
+		}
+	}
+	return true
+}
+
+// slicesEqual is a helper function to compare two slices for equality.
+// TODO:GOVERSION 1.21: replace with slices.Equal
+func slicesEqual[S []E, E comparable](a, b S) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 type NotInstalledError struct {
