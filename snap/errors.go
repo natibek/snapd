@@ -21,6 +21,7 @@ package snap
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -31,7 +32,13 @@ type AlreadyInstalledError struct {
 
 func (e AlreadyInstalledError) Error() string {
 	var comps []string
-	for snap, components := range e.Components {
+	keys := make([]string, 0, len(e.Components))
+	for snap := range e.Components {
+		keys = append(keys, snap)
+	}
+	sort.Strings(keys)
+	for _, snap := range keys {
+		components := e.Components[snap]
 		for _, comp := range components {
 			comps = append(comps, SnapComponentName(snap, comp))
 		}
@@ -88,8 +95,14 @@ func slicesEqual[S []E, E comparable](a, b S) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i := range a {
-		if a[i] != b[i] {
+
+	seen := make(map[E]bool, len(a))
+	for _, val := range a {
+		seen[val] = true
+	}
+
+	for _, val := range b {
+		if _, ok := seen[val]; !ok {
 			return false
 		}
 	}
