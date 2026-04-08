@@ -91,7 +91,7 @@ func (s *errorsSuite) TestAlreadyInstalledError(c *C) {
 
 	err := snap.AlreadyInstalledError{
 		Snaps:      []string{"foo", "bar"},
-		Components: map[string][]string{"snap": {"comp1", "comp2"}},
+		Components: map[string][]string{"some-snap": {"comp1", "comp2"}},
 	}
 	c.Check(errors.Is(err, err), Equals, true)
 
@@ -103,14 +103,14 @@ func (s *errorsSuite) TestAlreadyInstalledError(c *C) {
 	// different snap and component order should match
 	otherErr := snap.AlreadyInstalledError{
 		Snaps:      []string{"bar", "foo"},
-		Components: map[string][]string{"snap": {"comp2", "comp1"}},
+		Components: map[string][]string{"some-snap": {"comp2", "comp1"}},
 	}
 	c.Check(errors.Is(err, otherErr), Equals, true)
 
 	// different snaps should not match
 	otherErr = snap.AlreadyInstalledError{
 		Snaps:      []string{"foo"},
-		Components: map[string][]string{"snap": {"comp1", "comp2"}},
+		Components: map[string][]string{"some-snap": {"comp1", "comp2"}},
 	}
 	c.Check(errors.Is(err, otherErr), Equals, false)
 
@@ -124,7 +124,7 @@ func (s *errorsSuite) TestAlreadyInstalledError(c *C) {
 	// different components should not match
 	otherErr = snap.AlreadyInstalledError{
 		Snaps:      []string{"foo", "bar"},
-		Components: map[string][]string{"snap": {"comp1"}},
+		Components: map[string][]string{"some-snap": {"comp1"}},
 	}
 	c.Check(errors.Is(err, otherErr), Equals, false)
 
