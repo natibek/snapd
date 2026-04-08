@@ -752,7 +752,7 @@ func (s *storeInstallGoal) validateAndPrune(st *state.State, installedSnaps map[
 
 		snapst, ok := installedSnaps[sn.InstanceName]
 		if ok && snapst.IsInstalled() {
-			// TODO: collect all already installed snaps before returning
+			// TODO: collect and sort all already installed snaps before returning
 			if !sn.SkipIfPresent {
 				return &snap.AlreadyInstalledError{Snaps: []string{sn.InstanceName}}
 			}

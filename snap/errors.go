@@ -95,14 +95,8 @@ func slicesEqual[S []E, E comparable](a, b S) bool {
 	if len(a) != len(b) {
 		return false
 	}
-
-	seen := make(map[E]bool, len(a))
-	for _, val := range a {
-		seen[val] = true
-	}
-
-	for _, val := range b {
-		if _, ok := seen[val]; !ok {
+	for i := range a {
+		if a[i] != b[i] {
 			return false
 		}
 	}
