@@ -61,7 +61,7 @@ func (e AlreadyInstalledError) Error() string {
 		builder.WriteString(fmt.Sprintf("components %q ", strings.Join(comps, ",")))
 	}
 
-	if len(e.Snaps) > 1 || len(comps) > 1 {
+	if len(e.Snaps)+len(comps) > 1 {
 		builder.WriteString("are already installed")
 	} else {
 		builder.WriteString("is already installed")
