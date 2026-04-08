@@ -32,17 +32,12 @@ type AlreadyInstalledError struct {
 
 func (e AlreadyInstalledError) Error() string {
 	var comps []string
-	keys := make([]string, 0, len(e.Components))
-	for snap := range e.Components {
-		keys = append(keys, snap)
-	}
-	sort.Strings(keys)
-	for _, snap := range keys {
-		components := e.Components[snap]
+	for snap, components := range e.Components {
 		for _, comp := range components {
 			comps = append(comps, SnapComponentName(snap, comp))
 		}
 	}
+	sort.Strings(comps)
 
 	builder := strings.Builder{}
 	if len(e.Snaps) == 1 {
