@@ -399,6 +399,10 @@ func (s *storeInstallGoal) toInstall(ctx context.Context, st *state.State, opts 
 		return nil, err
 	}
 
+	if len(s.snaps) == 0 {
+		// XXX: all the snaps where already installed and skipped
+	}
+
 	results, err := sendInstallActions(ctx, st, s.snaps, opts)
 	if err != nil {
 		return nil, err
@@ -741,6 +745,7 @@ func invalidComponentRevisionError(action, snapName, componentName string, sets 
 func (s *storeInstallGoal) validateAndPrune(st *state.State, installedSnaps map[string]*SnapState, opts Options) error {
 	enforcedSetsFunc := cachedEnforcedValidationSets(st)
 	uninstalled := s.snaps[:0]
+	var alreadyInstalled []string
 	for _, sn := range s.snaps {
 		if err := snap.ValidateInstanceName(sn.InstanceName); err != nil {
 			return fmt.Errorf("invalid instance name: %v", err)
@@ -752,10 +757,13 @@ func (s *storeInstallGoal) validateAndPrune(st *state.State, installedSnaps map[
 
 		snapst, ok := installedSnaps[sn.InstanceName]
 		if ok && snapst.IsInstalled() {
-			// TODO: collect and sort all already installed snaps before returning
 			if !sn.SkipIfPresent {
-				return &snap.AlreadyInstalledError{Snaps: []string{sn.InstanceName}}
+				alreadyInstalled = append(alreadyInstalled, sn.InstanceName)
 			}
+			continue
+		}
+
+		if len(alreadyInstalled) > 0 {
 			continue
 		}
 
@@ -775,6 +783,10 @@ func (s *storeInstallGoal) validateAndPrune(st *state.State, installedSnaps map[
 		}
 
 		uninstalled = append(uninstalled, sn)
+	}
+	if len(alreadyInstalled) > 0 {
+		sort.Strings(alreadyInstalled)
+		return snap.AlreadyInstalledError{Snaps: alreadyInstalled}
 	}
 
 	s.snaps = uninstalled
