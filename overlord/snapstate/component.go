@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 
 	"github.com/snapcore/snapd/asserts"
 	"github.com/snapcore/snapd/asserts/snapasserts"
@@ -77,8 +76,7 @@ func InstallComponents(
 		}
 
 		if len(alreadyInstalled) > 0 {
-			sort.Strings(alreadyInstalled)
-			return nil, snap.AlreadyInstalledError{Components: map[string][]string{info.SnapName(): alreadyInstalled}}
+			return nil, snap.NewAlreadyInstalledComponentsError(info.SnapName(), alreadyInstalled)
 		}
 	}
 

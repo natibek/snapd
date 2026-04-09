@@ -785,8 +785,7 @@ func (s *storeInstallGoal) validateAndPrune(st *state.State, installedSnaps map[
 		uninstalled = append(uninstalled, sn)
 	}
 	if len(alreadyInstalled) > 0 {
-		sort.Strings(alreadyInstalled)
-		return snap.AlreadyInstalledError{Snaps: alreadyInstalled}
+		return snap.NewAlreadyInstalledSnapsError(alreadyInstalled)
 	}
 
 	s.snaps = uninstalled

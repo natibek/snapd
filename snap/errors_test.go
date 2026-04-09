@@ -49,10 +49,11 @@ func (s *errorsSuite) TestAlreadyInstalledError(c *C) {
 			map[string][]string{"some-snap": {"comp"}},
 			`component "some-snap\+comp" is already installed`,
 		},
+		// check that snap names are sorted
 		{
 			[]string{"some-snap", "other-snap"},
 			nil,
-			`snaps "some-snap,other-snap" are already installed`,
+			`snaps "other-snap,some-snap" are already installed`,
 		},
 		{
 			nil,
@@ -67,13 +68,14 @@ func (s *errorsSuite) TestAlreadyInstalledError(c *C) {
 		{
 			[]string{"some-snap", "other-snap"},
 			map[string][]string{"some-snap": {"comp"}},
-			`snaps "some-snap,other-snap" and component "some-snap\+comp" are already installed`,
+			`snaps "other-snap,some-snap" and component "some-snap\+comp" are already installed`,
 		},
 		{
 			[]string{"some-snap"},
 			map[string][]string{"other-snap": {"comp1", "comp2"}},
 			`snap "some-snap" and components "other-snap\+comp1,other-snap\+comp2" are already installed`,
 		},
+		// check that component names are sorted
 		{
 			[]string{"some-snap"},
 			map[string][]string{"other-snap": {"comp"}, "some-other-snap": {"comp"}},
@@ -82,7 +84,7 @@ func (s *errorsSuite) TestAlreadyInstalledError(c *C) {
 		{
 			[]string{"some-snap", "other-snap"},
 			map[string][]string{"other-snap": {"comp"}, "some-other-snap": {"comp"}},
-			`snaps "some-snap,other-snap" and components "other-snap\+comp,some-other-snap\+comp" are already installed`,
+			`snaps "other-snap,some-snap" and components "other-snap\+comp,some-other-snap\+comp" are already installed`,
 		},
 	} {
 		err := snap.AlreadyInstalledError{Snaps: testCase.snaps, Components: testCase.components}
@@ -123,15 +125,38 @@ func (s *errorsSuite) TestAlreadyInstalledError(c *C) {
 
 	// different components should not match
 	otherErr = snap.AlreadyInstalledError{
-		Snaps:      []string{"foo", "bar"},
+		Snaps:      []string{"bar", "foo"},
 		Components: map[string][]string{"some-snap": {"comp1"}},
 	}
 	c.Check(errors.Is(err, otherErr), Equals, false)
+
+	// check that the error generated with snap.NewAlreadyInstalledError matches
+	otherErr2 := snap.NewAlreadyInstalledError([]string{"foo", "bar"}, map[string][]string{"some-snap": {"comp1"}})
+	c.Check(errors.Is(otherErr, otherErr2), Equals, true)
 
 	otherErr = snap.AlreadyInstalledError{
 		Snaps: []string{"foo", "bar"},
 	}
 	c.Check(errors.Is(err, otherErr), Equals, false)
+
+	// check that snap.NewAlreadyInstalledSnapsError sorts the snaps in the resulting error
+	c.Check(errors.Is(otherErr, snap.NewAlreadyInstalledSnapsError([]string{"foo", "bar"})), Equals, false)
+	otherErr = snap.AlreadyInstalledError{
+		Snaps: []string{"bar", "foo"},
+	}
+	c.Check(errors.Is(otherErr, snap.NewAlreadyInstalledSnapsError([]string{"foo", "bar"})), Equals, true)
+
+	otherErr = snap.AlreadyInstalledError{
+		Components: map[string][]string{"other-snap": {"comp2", "comp1"}},
+	}
+	c.Check(errors.Is(err, otherErr), Equals, false)
+
+	// check that snap.NewAlreadyInstalledSnapsError sorts the snaps in the resulting error
+	c.Check(errors.Is(otherErr, snap.NewAlreadyInstalledComponentsError("other-snap", []string{"comp1", "comp2"})), Equals, false)
+	otherErr = snap.AlreadyInstalledError{
+		Components: map[string][]string{"other-snap": {"comp1", "comp2"}},
+	}
+	c.Check(errors.Is(otherErr, snap.NewAlreadyInstalledComponentsError("other-snap", []string{"comp1", "comp2"})), Equals, true)
 
 }
 

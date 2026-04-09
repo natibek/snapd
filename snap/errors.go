@@ -25,6 +25,8 @@ import (
 	"strings"
 )
 
+// should not generate this error directly. Use NewAlreadyInstalledSnapsError,
+// NewAlreadyInstalledComponentsError, or NewAlreadyInstalledError.
 type AlreadyInstalledError struct {
 	Snaps      []string
 	Components map[string][]string
@@ -38,6 +40,7 @@ func (e AlreadyInstalledError) Error() string {
 		}
 	}
 	sort.Strings(comps)
+	sort.Strings(e.Snaps)
 
 	builder := strings.Builder{}
 	if len(e.Snaps) == 1 {
@@ -96,6 +99,37 @@ func slicesEqual[S []E, E comparable](a, b S) bool {
 		}
 	}
 	return true
+}
+
+func NewAlreadyInstalledSnapsError(snaps []string) AlreadyInstalledError {
+	return NewAlreadyInstalledError(snaps, nil)
+}
+
+func NewAlreadyInstalledComponentsError(snapName string, comps []string) AlreadyInstalledError {
+	return NewAlreadyInstalledError(nil, map[string][]string{
+		snapName: comps,
+	})
+}
+
+func NewAlreadyInstalledError(snaps []string, comps map[string][]string) AlreadyInstalledError {
+	// sort snaps for use with .Is()
+	if len(snaps) > 0 {
+		sort.Strings(snaps)
+	}
+
+	if len(comps) > 0 {
+		// sort components for use with .Is()
+		for _, scomps := range comps {
+			if len(scomps) > 0 {
+				sort.Strings(scomps)
+			}
+		}
+	}
+
+	return AlreadyInstalledError{
+		Snaps:      snaps,
+		Components: comps,
+	}
 }
 
 type NotInstalledError struct {

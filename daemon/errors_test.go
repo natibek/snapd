@@ -164,9 +164,9 @@ func (s *errorsSuite) TestErrToResponse(c *C) {
 		{store.ErrLocalSnap, makeErrorRsp(client.ErrorKindSnapLocal, store.ErrLocalSnap, ""), false},
 		{aieSnap, makeErrorRsp(client.ErrorKindSnapAlreadyInstalled, aieSnap, "foo"), false},
 		// TODO: these should not be generic BadRequest errors
-		{aieSnaps, daemon.BadRequest("ERR: snaps \"foo,bar\" are already installed"), false},
+		{aieSnaps, daemon.BadRequest("ERR: snaps \"bar,foo\" are already installed"), false},
 		{aieComps, daemon.BadRequest("ERR: components \"foo+comp1,foo+comp2\" are already installed"), false},
-		{aieSnapsComps, daemon.BadRequest("ERR: snaps \"foo,bar\" and components \"foo+comp1,foo+comp2\" are already installed"), false},
+		{aieSnapsComps, daemon.BadRequest("ERR: snaps \"bar,foo\" and components \"foo+comp1,foo+comp2\" are already installed"), false},
 		{nie, daemon.SnapNotInstalled("foo", nie), false},
 		{ndme, makeErrorRsp(client.ErrorKindSnapNeedsDevMode, ndme, "foo"), false},
 		{nc, makeErrorRsp(client.ErrorKindSnapNotClassic, nc, "foo"), false},
