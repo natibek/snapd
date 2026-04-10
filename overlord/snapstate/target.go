@@ -399,10 +399,6 @@ func (s *storeInstallGoal) toInstall(ctx context.Context, st *state.State, opts 
 		return nil, err
 	}
 
-	if len(s.snaps) == 0 {
-		// XXX: all the snaps where already installed and skipped
-	}
-
 	results, err := sendInstallActions(ctx, st, s.snaps, opts)
 	if err != nil {
 		return nil, err

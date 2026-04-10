@@ -120,10 +120,10 @@ func (e fakeNetError) Timeout() bool   { return e.timeout }
 func (e fakeNetError) Temporary() bool { return e.temporary }
 
 func (s *errorsSuite) TestErrToResponse(c *C) {
-	aieSnap := &snap.AlreadyInstalledError{Snaps: []string{"foo"}}
-	aieSnaps := &snap.AlreadyInstalledError{Snaps: []string{"foo", "bar"}}
-	aieComps := &snap.AlreadyInstalledError{Components: map[string][]string{"foo": {"comp1", "comp2"}}}
-	aieSnapsComps := &snap.AlreadyInstalledError{Snaps: []string{"foo", "bar"}, Components: map[string][]string{"foo": {"comp1", "comp2"}}}
+	aieSnap := snap.NewAlreadyInstalledSnapsError([]string{"foo"})
+	aieSnaps := snap.NewAlreadyInstalledSnapsError( []string{"foo", "bar"})
+	aieComps := snap.NewAlreadyInstalledComponentsError("foo", []string{"comp1", "comp2"})
+	aieSnapsComps := snap.NewAlreadyInstalledError([]string{"foo", "bar"}, map[string][]string{"foo": {"comp1", "comp2"}})
 	nie := &snap.NotInstalledError{Snap: "foo"}
 	scce := &snapstate.ChangeConflictError{Snap: "foo"}
 	ndme := &snapstate.SnapNeedsDevModeError{Snap: "foo"}
@@ -162,11 +162,11 @@ func (s *errorsSuite) TestErrToResponse(c *C) {
 		{store.ErrSnapNotFound, daemon.SnapNotFound("foo", store.ErrSnapNotFound), false},
 		{store.ErrNoUpdateAvailable, makeErrorRsp(client.ErrorKindSnapNoUpdateAvailable, store.ErrNoUpdateAvailable, ""), false},
 		{store.ErrLocalSnap, makeErrorRsp(client.ErrorKindSnapLocal, store.ErrLocalSnap, ""), false},
-		{aieSnap, makeErrorRsp(client.ErrorKindSnapAlreadyInstalled, aieSnap, "foo"), false},
+		{&aieSnap, makeErrorRsp(client.ErrorKindSnapAlreadyInstalled, aieSnap, "foo"), false},
 		// TODO: these should not be generic BadRequest errors
-		{aieSnaps, daemon.BadRequest("ERR: snaps \"bar,foo\" are already installed"), false},
-		{aieComps, daemon.BadRequest("ERR: components \"foo+comp1,foo+comp2\" are already installed"), false},
-		{aieSnapsComps, daemon.BadRequest("ERR: snaps \"bar,foo\" and components \"foo+comp1,foo+comp2\" are already installed"), false},
+		{&aieSnaps, daemon.BadRequest("ERR: snaps \"bar,foo\" are already installed"), false},
+		{&aieComps, daemon.BadRequest("ERR: components \"foo+comp1,foo+comp2\" are already installed"), false},
+		{&aieSnapsComps, daemon.BadRequest("ERR: snaps \"bar,foo\" and components \"foo+comp1,foo+comp2\" are already installed"), false},
 		{nie, daemon.SnapNotInstalled("foo", nie), false},
 		{ndme, makeErrorRsp(client.ErrorKindSnapNeedsDevMode, ndme, "foo"), false},
 		{nc, makeErrorRsp(client.ErrorKindSnapNotClassic, nc, "foo"), false},

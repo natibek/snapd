@@ -25,7 +25,7 @@ import (
 	"strings"
 )
 
-// Should not generate this error directly. Use NewAlreadyInstalledSnapsError,
+// Should not construct this error directly. Use NewAlreadyInstalledSnapsError,
 // NewAlreadyInstalledComponentsError, or NewAlreadyInstalledError.
 type AlreadyInstalledError struct {
 	Snaps      []string
@@ -40,7 +40,6 @@ func (e AlreadyInstalledError) Error() string {
 		}
 	}
 	sort.Strings(comps)
-	sort.Strings(e.Snaps)
 
 	builder := strings.Builder{}
 	if len(e.Snaps) == 1 {
