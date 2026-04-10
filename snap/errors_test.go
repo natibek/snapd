@@ -153,7 +153,7 @@ func (s *errorsSuite) TestAlreadyInstalledError(c *C) {
 	}
 	c.Check(errors.Is(err, otherErr), Equals, false)
 
-	// check that snap.snap.NewAlreadyInstalledSnapsError sorts the snaps in the resulting error
+	// check that snap.NewAlreadyInstalledSnapsError sorts the snaps in the resulting error
 	c.Check(errors.Is(otherErr, snap.NewAlreadyInstalledSnapsError([]string{"foo", "bar"})), Equals, false)
 	otherErr = snap.AlreadyInstalledError{
 		Snaps: []string{"bar", "foo"},
