@@ -123,6 +123,13 @@ func (s *errorsSuite) TestAlreadyInstalledError(c *C) {
 	}
 	c.Check(errors.Is(err, otherErr), Equals, false)
 
+	// different number of components should not match
+	otherErr = snap.AlreadyInstalledError{
+		Snaps:      []string{"foo", "bar"},
+		Components: map[string][]string{"some-snap": {"comp1", "comp2"}, "other-snap": {"comp"}},
+	}
+	c.Check(errors.Is(err, otherErr), Equals, false)
+
 	// different components should not match
 	otherErr = snap.AlreadyInstalledError{
 		Snaps:      []string{"bar", "foo"},

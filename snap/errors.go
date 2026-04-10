@@ -25,7 +25,7 @@ import (
 	"strings"
 )
 
-// should not generate this error directly. Use NewAlreadyInstalledSnapsError,
+// Should not generate this error directly. Use NewAlreadyInstalledSnapsError,
 // NewAlreadyInstalledComponentsError, or NewAlreadyInstalledError.
 type AlreadyInstalledError struct {
 	Snaps      []string
@@ -75,6 +75,10 @@ func (e AlreadyInstalledError) Is(err error) bool {
 	}
 
 	if !slicesEqual(e.Snaps, other.Snaps) {
+		return false
+	}
+
+	if len(e.Components) != len(other.Components) {
 		return false
 	}
 
