@@ -121,7 +121,7 @@ func (e fakeNetError) Temporary() bool { return e.temporary }
 
 func (s *errorsSuite) TestErrToResponse(c *C) {
 	aieSnap := snap.NewAlreadyInstalledSnapsError([]string{"foo"})
-	aieSnaps := snap.NewAlreadyInstalledSnapsError( []string{"foo", "bar"})
+	aieSnaps := snap.NewAlreadyInstalledSnapsError([]string{"foo", "bar"})
 	aieComps := snap.NewAlreadyInstalledComponentsError("foo", []string{"comp1", "comp2"})
 	aieSnapsComps := snap.NewAlreadyInstalledError([]string{"foo", "bar"}, map[string][]string{"foo": {"comp1", "comp2"}})
 	nie := &snap.NotInstalledError{Snap: "foo"}
