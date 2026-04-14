@@ -377,12 +377,12 @@ func errToResponse(err error, snaps []string, fallback errorResponder, format st
 				return InternalError("store.RevisionNotAvailable with %d snaps", len(snaps))
 			}
 		case *snap.AlreadyInstalledError:
-			// TODO: handle error for multiple snaps and components
 			kind = client.ErrorKindSnapAlreadyInstalled
-			if len(err.Snaps) == 1 {
-				snapName = err.Snaps[0]
-			} else {
-				handled = false
+			return &apiError{
+				Status:  400,
+				Message: err.Error(),
+				Kind:    kind,
+				Value:   err,
 			}
 		case *snap.NotInstalledError:
 			kind = client.ErrorKindSnapNotInstalled

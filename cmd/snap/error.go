@@ -35,6 +35,7 @@ import (
 	"github.com/snapcore/snapd/logger"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/snapcore/snapd/osutil/user"
+	"github.com/snapcore/snapd/snap"
 	"github.com/snapcore/snapd/snap/channel"
 	"github.com/snapcore/snapd/strutil"
 )
@@ -172,7 +173,32 @@ Try 'snapcraft prime' in your project directory, then 'snap try' again.`)
 		}
 	case client.ErrorKindSnapAlreadyInstalled:
 		isError = false
-		msg = i18n.G(`snap %q is already installed, see 'snap help refresh'`)
+		usesSnapName = false
+
+		val, ok := err.Value.(map[string]any)
+		if !ok {
+			return "", e
+		}
+
+		snaps, _ := val["Snaps"].([]any)
+		components, _ := val["Components"].(map[string]any)
+		var msgs []string
+		for _, s := range snaps {
+			s, _ := s.(string)
+			if _, ok := components[s]; !ok {
+				msgs = append(msgs, fmt.Sprintf(i18n.G(`snap %q is already installed, see 'snap help refresh'`), s))
+			}
+		}
+
+		for s, c := range components {
+			for _, comp := range c.([]interface{}) {
+				comp, _ := comp.(string)
+				msgs = append(msgs, fmt.Sprintf(i18n.G(`component %q is already installed`), snap.SnapComponentName(s, comp)))
+			}
+		}
+
+		return strings.Join(msgs, "\n"), nil
+
 	case client.ErrorKindSnapNeedsDevMode:
 		if opts != nil && opts.Dangerous {
 			msg = i18n.G("snap %q requires devmode or confinement override")
