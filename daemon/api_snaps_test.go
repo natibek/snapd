@@ -2564,7 +2564,7 @@ func (s *snapsSuite) TestInstallOneAlreadyInstalledSnap(c *check.C) {
 		Current: snap.R(1),
 	})
 
-	_ , err := inst.Dispatch()(context.Background(), inst, st)
+	_, err := inst.Dispatch()(context.Background(), inst, st)
 	c.Check(err, testutil.ErrorIs, *snap.NewAlreadyInstalledSnapsError([]string{"some-snap"}))
 }
 
@@ -2575,9 +2575,9 @@ func (s *snapsSuite) TestInstallOneAlreadyInstalledComponent(c *check.C) {
 
 	d := s.daemon(c)
 	inst := &daemon.SnapInstruction{
-		Action: "install",
-		Snaps:  []string{"some-snap"},
-		CompsForSnaps:  map[string][]string{"some-snap": {"one"}},
+		Action:        "install",
+		Snaps:         []string{"some-snap"},
+		CompsForSnaps: map[string][]string{"some-snap": {"one"}},
 	}
 
 	st := d.Overlord().State()
@@ -2599,14 +2599,13 @@ func (s *snapsSuite) TestInstallOneAlreadyInstalledComponent(c *check.C) {
 		Revision:  snap.R(1),
 	}, snap.StandardComponent))
 
-
 	snapstate.Set(st, "some-snap", &snapstate.SnapState{
-		Active: true,
+		Active:   true,
 		Sequence: seq,
-		Current: snap.R(1),
+		Current:  snap.R(1),
 	})
 
-	_ , err := inst.Dispatch()(context.Background(), inst, st)
+	_, err := inst.Dispatch()(context.Background(), inst, st)
 	c.Check(err, testutil.ErrorIs, *snap.NewAlreadyInstalledError([]string{"some-snap"}, map[string][]string{"some-snap": {"one"}}))
 }
 
@@ -2624,9 +2623,9 @@ func (s *snapsSuite) TestInstallManySomeSnapsAndComponentsAlreadyInstalled(c *ch
 
 	d := s.daemon(c)
 	inst := &daemon.SnapInstruction{
-		Action: "install",
-		Snaps:  []string{"some-snap", "other-snap", "some-other-snap"},
-		CompsForSnaps:  map[string][]string{"some-snap": {"one"}, "other-snap": {"one"}},
+		Action:        "install",
+		Snaps:         []string{"some-snap", "other-snap", "some-other-snap"},
+		CompsForSnaps: map[string][]string{"some-snap": {"one"}, "other-snap": {"one"}},
 	}
 
 	st := d.Overlord().State()
@@ -2649,9 +2648,9 @@ func (s *snapsSuite) TestInstallManySomeSnapsAndComponentsAlreadyInstalled(c *ch
 	}, snap.StandardComponent))
 
 	snapstate.Set(st, "some-snap", &snapstate.SnapState{
-		Active: true,
+		Active:   true,
 		Sequence: seq,
-		Current: snap.R(1),
+		Current:  snap.R(1),
 	})
 
 	si2 := &snap.SideInfo{

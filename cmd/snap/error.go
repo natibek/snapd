@@ -172,9 +172,6 @@ Try 'snapcraft prime' in your project directory, then 'snap try' again.`)
 			}
 		}
 	case client.ErrorKindSnapAlreadyInstalled:
-		isError = false
-		usesSnapName = false
-
 		val, ok := err.Value.(map[string]any)
 		if !ok {
 			return "", e
@@ -191,7 +188,7 @@ Try 'snapcraft prime' in your project directory, then 'snap try' again.`)
 		}
 
 		for s, c := range components {
-			for _, comp := range c.([]interface{}) {
+			for _, comp := range c.([]any) {
 				comp, _ := comp.(string)
 				msgs = append(msgs, fmt.Sprintf(i18n.G(`component %q is already installed`), snap.SnapComponentName(s, comp)))
 			}

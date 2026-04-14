@@ -164,7 +164,7 @@ func (s *errorsSuite) TestErrToResponse(c *C) {
 		{store.ErrLocalSnap, makeErrorRsp(client.ErrorKindSnapLocal, store.ErrLocalSnap, ""), false},
 		{aieSnap, makeErrorRsp(client.ErrorKindSnapAlreadyInstalled, aieSnap, aieSnap), false},
 		{aieSnaps, makeErrorRsp(client.ErrorKindSnapAlreadyInstalled, aieSnaps, aieSnaps), false},
-		{aieComps, makeErrorRsp(client.ErrorKindSnapAlreadyInstalled, aieComps,  aieComps), false},
+		{aieComps, makeErrorRsp(client.ErrorKindSnapAlreadyInstalled, aieComps, aieComps), false},
 		{aieSnapsComps, makeErrorRsp(client.ErrorKindSnapAlreadyInstalled, aieSnapsComps, aieSnapsComps), false},
 		{nie, daemon.SnapNotInstalled("foo", nie), false},
 		{ndme, makeErrorRsp(client.ErrorKindSnapNeedsDevMode, ndme, "foo"), false},
