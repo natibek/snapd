@@ -43,25 +43,25 @@ func (e AlreadyInstalledError) Error() string {
 
 	builder := strings.Builder{}
 	if len(e.Snaps) == 1 {
-		builder.WriteString(fmt.Sprintf("snap %q ", e.Snaps[0]))
+		fmt.Fprintf(&builder, "snap %q ", e.Snaps[0])
 	} else if len(e.Snaps) > 1 {
-		builder.WriteString(fmt.Sprintf("snaps %q ", strings.Join(e.Snaps, ",")))
+		fmt.Fprintf(&builder, "snaps %q ", strings.Join(e.Snaps, ","))
 	}
 
 	if len(e.Snaps) > 0 && len(comps) > 0 {
-		builder.WriteString("and ")
+		fmt.Fprintf(&builder, "and ")
 	}
 
 	if len(comps) == 1 {
-		builder.WriteString(fmt.Sprintf("component %q ", comps[0]))
+		fmt.Fprintf(&builder, "component %q ", comps[0])
 	} else if len(comps) > 1 {
-		builder.WriteString(fmt.Sprintf("components %q ", strings.Join(comps, ",")))
+		fmt.Fprintf(&builder, "components %q ", strings.Join(comps, ","))
 	}
 
 	if len(e.Snaps)+len(comps) > 1 {
-		builder.WriteString("are already installed")
+		fmt.Fprintf(&builder, "are already installed")
 	} else {
-		builder.WriteString("is already installed")
+		fmt.Fprintf(&builder, "is already installed")
 	}
 
 	return builder.String()
@@ -104,17 +104,17 @@ func slicesEqual[S []E, E comparable](a, b S) bool {
 	return true
 }
 
-func NewAlreadyInstalledSnapsError(snaps []string) AlreadyInstalledError {
+func NewAlreadyInstalledSnapsError(snaps []string) *AlreadyInstalledError {
 	return NewAlreadyInstalledError(snaps, nil)
 }
 
-func NewAlreadyInstalledComponentsError(snapName string, comps []string) AlreadyInstalledError {
+func NewAlreadyInstalledComponentsError(snapName string, comps []string) *AlreadyInstalledError {
 	return NewAlreadyInstalledError(nil, map[string][]string{
 		snapName: comps,
 	})
 }
 
-func NewAlreadyInstalledError(snaps []string, comps map[string][]string) AlreadyInstalledError {
+func NewAlreadyInstalledError(snaps []string, comps map[string][]string) *AlreadyInstalledError {
 	// sort snaps for use with .Is()
 	if len(snaps) > 0 {
 		sort.Strings(snaps)
@@ -129,7 +129,7 @@ func NewAlreadyInstalledError(snaps []string, comps map[string][]string) Already
 		}
 	}
 
-	return AlreadyInstalledError{
+	return &AlreadyInstalledError{
 		Snaps:      snaps,
 		Components: comps,
 	}
