@@ -402,11 +402,32 @@ func createSnapctlInstallTasks(hctx *hookstate.Context, cmd managementCommand) (
 		return nil, err
 	}
 
-	info, err := currentSnapInfo(st, hctx.InstanceName())
+	name := hctx.InstanceName()
+	info, err := currentSnapInfo(st, name)
 	if err != nil {
 		return nil, err
 	}
-	return snapstateInstallComponents(context.TODO(), st, cmd.components, info, vsets,
+
+	var snapst snapstate.SnapState
+	if err := snapstate.Get(st, name, &snapst); err != nil && !errors.Is(err, state.ErrNoState) {
+		return nil, err
+	}
+
+	var compsToInstall, alreadyInstalled []string
+	for _, comp := range cmd.components {
+		if snapst.CurrentComponentSideInfo(naming.NewComponentRef(name, comp)) == nil {
+			compsToInstall = append(compsToInstall, comp)
+		} else {
+			alreadyInstalled = append(alreadyInstalled, comp)
+		}
+	}
+
+	if len(alreadyInstalled) == len(cmd.components) {
+		// all the components are already installed
+		return nil, snap.NewAlreadyInstalledComponentsError(name, alreadyInstalled)
+	}
+
+	return snapstateInstallComponents(context.TODO(), st, compsToInstall, info, vsets,
 		snapstate.Options{ExpectOneSnap: true, ConflictOptions: snapstate.ConflictOptions{FromChange: changeIDIfNotEphemeral(hctx)}})
 }
 

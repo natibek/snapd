@@ -23,9 +23,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/snapcore/snapd/client"
 	"github.com/snapcore/snapd/dirs"
+	"github.com/snapcore/snapd/i18n"
+	"github.com/snapcore/snapd/snap"
 	"github.com/snapcore/snapd/usersession/xdgopenproxy"
 )
 
@@ -66,6 +69,20 @@ func main() {
 	if err != nil {
 		if e, ok := err.(*client.Error); ok {
 			switch e.Kind {
+			case client.ErrorKindSnapAlreadyInstalled:
+				// all the components are already installed
+				if errRes, ok := e.Value.(map[string]any); ok {
+					comps := errRes["Components"].(map[string]any)
+					var msgs []string
+					for s, c := range comps {
+						for _, comp := range c.([]any) {
+							comp, _ := comp.(string)
+							msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), snap.SnapComponentName(s, comp)))
+						}
+					}
+					os.Stderr.Write([]byte(strings.Join(msgs, "\n")))
+					os.Exit(0)
+				}
 			case client.ErrorKindUnsuccessful:
 				if errRes, ok := e.Value.(map[string]any); ok {
 					if stdout, ok := errRes["stdout"].(string); ok {

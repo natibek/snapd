@@ -31,6 +31,7 @@ import (
 	"github.com/snapcore/snapd/jsonutil"
 	"github.com/snapcore/snapd/overlord/auth"
 	"github.com/snapcore/snapd/overlord/hookstate/ctlcmd"
+	"github.com/snapcore/snapd/snap"
 )
 
 var (
@@ -91,6 +92,14 @@ func runSnapctl(c *Command, r *http.Request, user *auth.UserState) Response {
 				Message: e.Error(),
 				Kind:    client.ErrorKindUnsuccessful,
 				Value:   result,
+			}
+		}
+		if e, ok := err.(*snap.AlreadyInstalledError); ok {
+			return &apiError{
+				Status:  400,
+				Message: e.Error(),
+				Kind:    client.ErrorKindSnapAlreadyInstalled,
+				Value:   e,
 			}
 		}
 		if e, ok := err.(*ctlcmd.ForbiddenCommandError); ok {
