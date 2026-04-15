@@ -390,7 +390,7 @@ func changeIDIfNotEphemeral(hctx *hookstate.Context) string {
 	return ""
 }
 
-func createSnapctlInstallTasks(hctx *hookstate.Context, cmd managementCommand) (tss []*state.TaskSet, err error) {
+func createSnapctlInstallTasks(hctx *hookstate.Context, cmd *managementCommand) (tss []*state.TaskSet, err error) {
 	st := hctx.State()
 	st.Lock()
 	defer st.Unlock()
@@ -409,7 +409,10 @@ func createSnapctlInstallTasks(hctx *hookstate.Context, cmd managementCommand) (
 	}
 
 	var snapst snapstate.SnapState
-	if err := snapstate.Get(st, name, &snapst); err != nil && !errors.Is(err, state.ErrNoState) {
+	if err := snapstate.Get(st, name, &snapst); err != nil {
+		if errors.Is(err, state.ErrNoState) {
+			return nil, &snap.NotInstalledError{Snap: name}
+		}
 		return nil, err
 	}
 
@@ -426,12 +429,13 @@ func createSnapctlInstallTasks(hctx *hookstate.Context, cmd managementCommand) (
 		// all the components are already installed
 		return nil, snap.NewAlreadyInstalledComponentsError(name, alreadyInstalled)
 	}
+	cmd.components = compsToInstall
 
 	return snapstateInstallComponents(context.TODO(), st, compsToInstall, info, vsets,
 		snapstate.Options{ExpectOneSnap: true, ConflictOptions: snapstate.ConflictOptions{FromChange: changeIDIfNotEphemeral(hctx)}})
 }
 
-func createSnapctlRemoveTasks(hctx *hookstate.Context, cmd managementCommand) (tss []*state.TaskSet, err error) {
+func createSnapctlRemoveTasks(hctx *hookstate.Context, cmd *managementCommand) (tss []*state.TaskSet, err error) {
 	st := hctx.State()
 	st.Lock()
 	defer st.Unlock()
@@ -441,7 +445,7 @@ func createSnapctlRemoveTasks(hctx *hookstate.Context, cmd managementCommand) (t
 			ConflictOptions: snapstate.ConflictOptions{FromChange: changeIDIfNotEphemeral(hctx)}})
 }
 
-func runSnapManagementCommand(hctx *hookstate.Context, cmd managementCommand) error {
+func runSnapManagementCommand(hctx *hookstate.Context, cmd *managementCommand) error {
 	st := hctx.State()
 	var tss []*state.TaskSet
 	var err error

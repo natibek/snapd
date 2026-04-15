@@ -20,7 +20,12 @@
 package ctlcmd
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/snapcore/snapd/i18n"
+	"github.com/snapcore/snapd/snap"
+	"github.com/snapcore/snapd/strutil"
 )
 
 var (
@@ -47,14 +52,27 @@ func (c *installCommand) Execute([]string) error {
 		return err
 	}
 
-	comps, err := validateSnapAndCompsNames(c.Positional.Names, ctx.InstanceName())
+	snapName := ctx.InstanceName()
+	comps, err := validateSnapAndCompsNames(c.Positional.Names, snapName)
 	if err != nil {
 		return err
 	}
 
-	if err := runSnapManagementCommand(ctx, managementCommand{
-		operation: installManagementCommand, components: comps}); err != nil {
+	cmd := managementCommand{operation: installManagementCommand, components: comps}
+	if err := runSnapManagementCommand(ctx, &cmd); err != nil {
 		return err
+	}
+
+	if len(cmd.components) < len(comps) {
+		var msgs []string
+		for _, comp := range comps {
+			if !strutil.ListContains(cmd.components, comp) {
+				name := snap.SnapComponentName(snapName, comp)
+				msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), name))
+			}
+		}
+
+		fmt.Fprintf(c.stderr, strings.Join(msgs, ""))
 	}
 
 	return nil
