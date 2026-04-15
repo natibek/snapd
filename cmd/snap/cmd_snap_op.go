@@ -776,16 +776,18 @@ func (x *cmdInstall) installOne(nameOrPath, desiredName string, opts *client.Sna
 	}
 
 	changedSnaps, err := changedSnapsFromChange(chg)
-	// TODO: if we're waiting, then there won't be any changed snaps. showDone
-	// will catch the case where we're waiting. might want to move this code
-	// around a bit
 	if err != nil && !errors.Is(err, client.ErrNoData) {
 		return err
 	}
+
 	// changedSnaps might be nil in some operations with the fakestore
 	if changedSnaps == nil {
 		changedSnaps = &changedSnapsData{}
 	}
+
+	// TODO: if we're waiting, then there won't be any changed snaps. showDone
+	// will catch the case where we're waiting. might want to move this code
+	// around a bit
 
 	// TODO: mention details of the install (e.g. like switch does)
 	if err := showDone(x.client, chg, changedSnaps, "install", opts, x.getEscapes()); err != nil {

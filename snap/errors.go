@@ -28,8 +28,8 @@ import (
 // Should not construct this error directly. Use NewAlreadyInstalledSnapsError,
 // NewAlreadyInstalledComponentsError, or NewAlreadyInstalledError.
 type AlreadyInstalledError struct {
-	Snaps      []string
-	Components map[string][]string
+	Snaps      []string            `json:"snaps,omitempty"`
+	Components map[string][]string `json:"components,omitempty"`
 }
 
 func (e AlreadyInstalledError) Error() string {

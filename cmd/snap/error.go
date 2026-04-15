@@ -177,19 +177,44 @@ Try 'snapcraft prime' in your project directory, then 'snap try' again.`)
 			return "", e
 		}
 
-		snaps, _ := val["Snaps"].([]any)
-		components, _ := val["Components"].(map[string]any)
+		if len(val) == 0 {
+			return "", fmt.Errorf("internal error: empty value in error %v", val)
+		}
+
+		var keys []string
+		for key := range val {
+			keys = append(keys, key)
+		}
+		snaps, ok := val["snaps"].([]any)
+		if !ok && strutil.ListContains(keys, "snaps") {
+			return "", fmt.Errorf("internal error: unexpected type %T", val["snaps"])
+		}
+		components, ok := val["components"].(map[string]any)
+		if !ok && strutil.ListContains(keys, "components") {
+			return "", fmt.Errorf("internal error: unexpected type %T", val["components"])
+		}
+
 		var msgs []string
 		for _, s := range snaps {
-			s, _ := s.(string)
-			if _, ok := components[s]; !ok {
+			snap, ok := s.(string)
+			if !ok {
+				return "", fmt.Errorf("internal error: unexpected type %T", s)
+			}
+			if _, ok := components[snap]; !ok {
 				msgs = append(msgs, fmt.Sprintf(i18n.G(`snap %q is already installed, see 'snap help refresh'`), s))
 			}
 		}
 
 		for s, c := range components {
-			for _, comp := range c.([]any) {
-				comp, _ := comp.(string)
+			comps, ok := c.([]any)
+			if !ok {
+				return "", fmt.Errorf("internal error: unexpected type %T", c)
+			}
+			for _, comp := range comps {
+				comp, ok := comp.(string)
+				if !ok {
+					return "", fmt.Errorf("internal error: unexpected type %T", comp)
+				}
 				msgs = append(msgs, fmt.Sprintf(i18n.G(`component %q is already installed`), snap.SnapComponentName(s, comp)))
 			}
 		}

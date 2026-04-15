@@ -3106,7 +3106,7 @@ func (s *SnapOpSuite) TestInstallOneAlreadyInstalledSnap(c *check.C) {
   "result": {
     "message": "snap \"some-snap\" is already installed",
     "value": {
-      "Snaps": ["some-snap"]
+      "snaps": ["some-snap"]
     },
     "kind": "snap-already-installed"
   },
@@ -3128,7 +3128,7 @@ func (s *SnapOpSuite) TestInstallOneAlreadyInstalledComponent(c *check.C) {
   "result": {
     "message": "component \"some-snap+one\" is already installed",
     "value": {
-	  "Components": {
+	  "components": {
 		  "some-snap": ["one"]
 	  }
     },
@@ -3152,8 +3152,8 @@ func (s *SnapOpSuite) TestInstallManyAlreadyInstalled(c *check.C) {
   "result": {
     "message": "component \"some-snap+one\" is already installed",
     "value": {
-      "Snaps": ["some-snap", "other-snap"],
-	  "Components": {
+      "snaps": ["some-snap", "other-snap"],
+	  "components": {
 		  "some-snap": ["one", "two"],
 		  "some-other-snap": ["one"]
 	  }
