@@ -779,7 +779,7 @@ func (x *cmdInstall) installOne(nameOrPath, desiredName string, opts *client.Sna
 	// TODO: if we're waiting, then there won't be any changed snaps. showDone
 	// will catch the case where we're waiting. might want to move this code
 	// around a bit
-	if err != nil && err != client.ErrNoData {
+	if err != nil && !errors.Is(err, client.ErrNoData) {
 		return err
 	}
 	// changedSnaps might be nil in some operations with the fakestore
@@ -849,14 +849,14 @@ func (x *cmdInstall) installMany(names []string, opts *client.SnapOptions) error
 
 	chg, err := x.wait(changeID)
 	if err != nil {
-		if err == noWait {
+		if errors.Is(err, noWait) {
 			return nil
 		}
 		return err
 	}
 
 	changedSnaps, err := changedSnapsFromChange(chg)
-	if err != nil && err != client.ErrNoData {
+	if err != nil && !errors.Is(err, client.ErrNoData) {
 		return err
 	}
 
