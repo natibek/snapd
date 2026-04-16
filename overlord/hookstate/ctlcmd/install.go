@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/snapcore/snapd/i18n"
-	"github.com/snapcore/snapd/snap"
 	"github.com/snapcore/snapd/strutil"
 )
 
@@ -67,8 +66,7 @@ func (c *installCommand) Execute([]string) error {
 		var msgs []string
 		for _, comp := range comps {
 			if !strutil.ListContains(cmd.components, comp) {
-				name := snap.SnapComponentName(snapName, comp)
-				msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), name))
+				msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp))
 			}
 		}
 

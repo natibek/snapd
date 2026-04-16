@@ -403,16 +403,17 @@ func createSnapctlInstallTasks(hctx *hookstate.Context, cmd *managementCommand) 
 	}
 
 	name := hctx.InstanceName()
-	info, err := currentSnapInfo(st, name)
-	if err != nil {
-		return nil, err
-	}
 
 	var snapst snapstate.SnapState
 	if err := snapstate.Get(st, name, &snapst); err != nil {
 		if errors.Is(err, state.ErrNoState) {
 			return nil, &snap.NotInstalledError{Snap: name}
 		}
+		return nil, err
+	}
+
+	info, err := snapst.CurrentInfo()
+	if err != nil {
 		return nil, err
 	}
 
