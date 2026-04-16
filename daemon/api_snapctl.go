@@ -95,8 +95,16 @@ func runSnapctl(c *Command, r *http.Request, user *auth.UserState) Response {
 			}
 		}
 		if e, ok := err.(*snap.AlreadyInstalledError); ok {
+			var comps []string
+			// e.Components should only contain one snap
+			// and the components that are already installed for it
+			for _, c := range e.Components {
+				comps = c
+				break
+			}
+
 			value := map[string]any{
-				"components": e.Components,
+				"components": comps,
 			}
 
 			return &apiError{

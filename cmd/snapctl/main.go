@@ -28,7 +28,6 @@ import (
 	"github.com/snapcore/snapd/client"
 	"github.com/snapcore/snapd/dirs"
 	"github.com/snapcore/snapd/i18n"
-	"github.com/snapcore/snapd/snap"
 	"github.com/snapcore/snapd/usersession/xdgopenproxy"
 )
 
@@ -75,32 +74,21 @@ func main() {
 				if !ok {
 					break
 				}
-				comps, ok := errRes["Components"].(map[string]any)
+				comps, ok := errRes["Components"].([]any)
 				if !ok {
-					break
-				}
-				// e.Components should only contain one snap
-				// and the components that are already installed for it
-				if len(comps) != 1 {
 					break
 				}
 
 				var msgs []string
-				for s, c := range comps {
-					cs, ok := c.([]any)
+				for _, comp := range comps {
+					comp, ok := comp.(string)
 					if !ok {
 						break
 					}
 
-					for _, comp := range cs {
-						comp, ok := comp.(string)
-						if !ok {
-							break
-						}
-
-						msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), snap.SnapComponentName(s, comp)))
-					}
+					msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp))
 				}
+
 				os.Stderr.Write([]byte(strings.Join(msgs, "\n")))
 				os.Exit(0)
 

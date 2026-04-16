@@ -31,6 +31,7 @@ import (
 	"github.com/snapcore/snapd/dirs"
 	"github.com/snapcore/snapd/overlord/hookstate"
 	"github.com/snapcore/snapd/overlord/hookstate/ctlcmd"
+	"github.com/snapcore/snapd/snap"
 )
 
 var _ = check.Suite(&snapctlSuite{})
@@ -139,5 +140,27 @@ func (s *snapctlSuite) TestSnapctlUnsuccesfulError(c *check.C) {
 		"stdout":    "",
 		"stderr":    "",
 		"exit-code": 123,
+	})
+}
+
+func (s *snapctlSuite) TestSnapctlAlreadyInstallError(c *check.C) {
+	s.daemon(c)
+
+	defer daemon.MockUcrednetGet(func(string) (*daemon.Ucrednet, error) {
+		return &daemon.Ucrednet{Uid: 100, Pid: 9999, Socket: dirs.SnapSocket}, nil
+	})()
+
+	defer daemon.MockCtlcmdRun(func(ctx *hookstate.Context, arg []string, uid uint32, features []string) ([]byte, []byte, error) {
+		return nil, nil, snap.NewAlreadyInstalledComponentsError("some-snap", []string{"one", "two"})
+	})()
+
+	buf := bytes.NewBufferString(fmt.Sprintf(`{"context-id": "some-context", "args": [%q, %q]}`, "is-connected", "plug"))
+	req, err := http.NewRequest("POST", "/v2/snapctl", buf)
+	c.Assert(err, check.IsNil)
+	rspe := s.errorReq(c, req, nil, actionIsExpected)
+	c.Check(rspe.Status, check.Equals, 400)
+	c.Check(rspe.Kind, check.Equals, client.ErrorKindSnapAlreadyInstalled)
+	c.Check(rspe.Value, check.DeepEquals, map[string]any{
+		"components": []string{"one", "two"},
 	})
 }
