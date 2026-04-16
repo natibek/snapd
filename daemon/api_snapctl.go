@@ -95,11 +95,15 @@ func runSnapctl(c *Command, r *http.Request, user *auth.UserState) Response {
 			}
 		}
 		if e, ok := err.(*snap.AlreadyInstalledError); ok {
+			value := map[string]any{
+				"components": e.Components,
+			}
+
 			return &apiError{
 				Status:  400,
 				Message: e.Error(),
 				Kind:    client.ErrorKindSnapAlreadyInstalled,
-				Value:   e,
+				Value:   value,
 			}
 		}
 		if e, ok := err.(*ctlcmd.ForbiddenCommandError); ok {

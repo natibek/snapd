@@ -71,18 +71,39 @@ func main() {
 			switch e.Kind {
 			case client.ErrorKindSnapAlreadyInstalled:
 				// all the components are already installed
-				if errRes, ok := e.Value.(map[string]any); ok {
-					comps := errRes["Components"].(map[string]any)
-					var msgs []string
-					for s, c := range comps {
-						for _, comp := range c.([]any) {
-							comp, _ := comp.(string)
-							msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), snap.SnapComponentName(s, comp)))
-						}
-					}
-					os.Stderr.Write([]byte(strings.Join(msgs, "\n")))
-					os.Exit(0)
+				errRes, ok := e.Value.(map[string]any)
+				if !ok {
+					break
 				}
+				comps, ok := errRes["Components"].(map[string]any)
+				if !ok {
+					break
+				}
+				// e.Components should only contain one snap
+				// and the components that are already installed for it
+				if len(comps) != 1 {
+					break
+				}
+
+				var msgs []string
+				for s, c := range comps {
+					cs, ok := c.([]any)
+					if !ok {
+						break
+					}
+
+					for _, comp := range cs {
+						comp, ok := comp.(string)
+						if !ok {
+							break
+						}
+
+						msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), snap.SnapComponentName(s, comp)))
+					}
+				}
+				os.Stderr.Write([]byte(strings.Join(msgs, "\n")))
+				os.Exit(0)
+
 			case client.ErrorKindUnsuccessful:
 				if errRes, ok := e.Value.(map[string]any); ok {
 					if stdout, ok := errRes["stdout"].(string); ok {
