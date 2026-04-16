@@ -785,10 +785,6 @@ func (x *cmdInstall) installOne(nameOrPath, desiredName string, opts *client.Sna
 		changedSnaps = &changedSnapsData{}
 	}
 
-	// TODO: if we're waiting, then there won't be any changed snaps. showDone
-	// will catch the case where we're waiting. might want to move this code
-	// around a bit
-
 	// TODO: mention details of the install (e.g. like switch does)
 	if err := showDone(x.client, chg, changedSnaps, "install", opts, x.getEscapes()); err != nil {
 		return err

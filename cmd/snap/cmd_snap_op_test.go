@@ -3150,7 +3150,7 @@ func (s *SnapOpSuite) TestInstallManyAlreadyInstalled(c *check.C) {
 		fmt.Fprintf(w, `{
   "type": "error",
   "result": {
-    "message": "component \"some-snap+one\" is already installed",
+    "message": "snaps \"other-snap,some-snap\" and components \"some-other-snap+one,some-snap+one,some-snap+two\" are already installed",
     "value": {
       "snaps": ["some-snap", "other-snap"],
 	  "components": {
