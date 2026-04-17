@@ -218,7 +218,6 @@ func AlreadyInstalled(aie *snap.AlreadyInstalledError) *apiError {
 	value := map[string]any{}
 	if len(aie.Snaps) > 0 {
 		value["snaps"] = aie.Snaps
-
 	}
 
 	if len(aie.Components) > 0 {
@@ -226,7 +225,7 @@ func AlreadyInstalled(aie *snap.AlreadyInstalledError) *apiError {
 	}
 
 	return &apiError{
-		Status:  404,
+		Status:  400,
 		Message: aie.Error(),
 		Kind:    client.ErrorKindSnapAlreadyInstalled,
 		Value:   value,

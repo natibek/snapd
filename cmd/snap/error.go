@@ -181,17 +181,19 @@ Try 'snapcraft prime' in your project directory, then 'snap try' again.`)
 			return "", fmt.Errorf("internal error: empty value in error %v", val)
 		}
 
-		var keys []string
-		for key := range val {
-			keys = append(keys, key)
+		var snaps []any
+		if s, ok := val["snaps"]; ok {
+			snaps, ok = s.([]any)
+			if !ok {
+				return "", fmt.Errorf("internal error: unexpected type %T", s)
+			}
 		}
-		snaps, ok := val["snaps"].([]any)
-		if !ok && strutil.ListContains(keys, "snaps") {
-			return "", fmt.Errorf("internal error: unexpected type %T", val["snaps"])
-		}
-		components, ok := val["components"].(map[string]any)
-		if !ok && strutil.ListContains(keys, "components") {
-			return "", fmt.Errorf("internal error: unexpected type %T", val["components"])
+		var components map[string]any
+		if c, ok := val["components"]; ok {
+			components, ok = c.(map[string]any)
+			if !ok {
+				return "", fmt.Errorf("internal error: unexpected type %T", c)
+			}
 		}
 
 		var msgs []string
