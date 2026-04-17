@@ -372,5 +372,5 @@ func (s *installSuite) TestInstallSomeAlreadyInstalled(c *C) {
 	stdout, stderr, err := ctlcmd.Run(s.mockContext, []string{"install", "+one", "+two"}, 0, nil)
 	c.Check(err, IsNil)
 	c.Check(stdout, HasLen, 0)
-	c.Check(string(stderr), Matches, `snapctl: component "one" is already installed`)
+	c.Check(string(stderr), Matches, `snapctl: component "one" is already installed\n`)
 }
