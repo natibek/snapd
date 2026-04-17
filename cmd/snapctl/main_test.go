@@ -133,7 +133,7 @@ func (s *snapctlSuite) TestHandleAlreadyInstalledError(c *C) {
 	cerr := &client.Error{
 		Kind: client.ErrorKindSnapAlreadyInstalled,
 		Value: map[string]any{
-			"Components": []any{"comp1", "comp2"},
+			"components": []any{"comp1", "comp2"},
 		},
 	}
 

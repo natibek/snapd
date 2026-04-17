@@ -70,7 +70,7 @@ func (c *installCommand) Execute([]string) error {
 			}
 		}
 
-		fmt.Fprintf(c.stderr, strings.Join(msgs, ""))
+		fmt.Fprintln(c.stderr, strings.Join(msgs, "\n"))
 	}
 
 	return nil

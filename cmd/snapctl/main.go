@@ -90,7 +90,7 @@ func handleError(err error) {
 			if !ok {
 				break
 			}
-			comps, ok := errRes["Components"].([]any)
+			comps, ok := errRes["components"].([]any)
 			if !ok {
 				break
 			}
@@ -104,8 +104,8 @@ func handleError(err error) {
 
 				msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp))
 			}
-
-			os.Stderr.Write([]byte(strings.Join(msgs, "\n")))
+			msg := strings.Join(msgs, "\n") + "\n"
+			os.Stderr.Write([]byte(msg))
 			osExit(0)
 
 		case client.ErrorKindUnsuccessful:
