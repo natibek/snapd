@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -126,4 +127,40 @@ func (s *snapctlSuite) TestSnapctlWithStdin(c *C) {
 
 	_, _, err := run(mockStdin)
 	c.Check(err, IsNil)
+}
+
+func (s *snapctlSuite) TestHandleAlreadyInstalledError(c *C) {
+	cerr := &client.Error{
+		Kind: client.ErrorKindSnapAlreadyInstalled,
+		Value: map[string]any{
+			"Components": []any{"comp1", "comp2"},
+		},
+	}
+
+	oldStdout := os.Stdout
+	rOut, wOut, _ := os.Pipe()
+	os.Stdout = wOut
+
+	oldStderr := os.Stderr
+	rErr, wErr, _ := os.Pipe()
+	os.Stderr = wErr
+
+	oldOsExit := osExit
+	osExit = func(code int) { panic("exit") }
+
+	c.Check(func() { handleError(cerr) }, Panics, "exit")
+
+	wOut.Close()
+	stdout, _ := io.ReadAll(rOut)
+
+	wErr.Close()
+	stderr, _ := io.ReadAll(rErr)
+
+	c.Check(stdout, HasLen, 0)
+	c.Check(string(stderr), Matches, `(?sm).*component "comp1" is already installed`)
+	c.Check(string(stderr), Matches, `(?sm).*component "comp2" is already installed`)
+
+	osExit = oldOsExit
+	os.Stdout = oldStdout
+	os.Stderr = oldStderr
 }

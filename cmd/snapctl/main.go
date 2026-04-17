@@ -41,21 +41,24 @@ var clientConfig = client.Config{
 	Socket: dirs.SnapSocket,
 }
 
+// for mocking in tests
+var osExit = os.Exit
+
 func main() {
 	// check for internal commands
 	if len(os.Args) > 2 && os.Args[1] == "internal" {
 		switch os.Args[2] {
 		case "configure-core":
 			fmt.Fprintf(os.Stderr, "no internal core configuration anymore")
-			os.Exit(1)
+			osExit(1)
 		}
 	}
 	if len(os.Args) == 3 && os.Args[1] == "user-open" {
 		if err := xdgopenproxy.Run(os.Args[2]); err != nil {
 			fmt.Fprintf(os.Stderr, "user-open error: %v\n", err)
-			os.Exit(1)
+			osExit(1)
 		}
-		os.Exit(0)
+		osExit(0)
 	}
 
 	var stdin io.Reader
@@ -66,48 +69,7 @@ func main() {
 	// no internal command, route via snapd
 	stdout, stderr, err := run(stdin)
 	if err != nil {
-		if e, ok := err.(*client.Error); ok {
-			switch e.Kind {
-			case client.ErrorKindSnapAlreadyInstalled:
-				// all the components are already installed
-				errRes, ok := e.Value.(map[string]any)
-				if !ok {
-					break
-				}
-				comps, ok := errRes["Components"].([]any)
-				if !ok {
-					break
-				}
-
-				var msgs []string
-				for _, comp := range comps {
-					comp, ok := comp.(string)
-					if !ok {
-						break
-					}
-
-					msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp))
-				}
-
-				os.Stderr.Write([]byte(strings.Join(msgs, "\n")))
-				os.Exit(0)
-
-			case client.ErrorKindUnsuccessful:
-				if errRes, ok := e.Value.(map[string]any); ok {
-					if stdout, ok := errRes["stdout"].(string); ok {
-						os.Stdout.Write([]byte(stdout))
-					}
-					if stderr, ok := errRes["stderr"].(string); ok {
-						os.Stderr.Write([]byte(stderr))
-					}
-					if errCode, ok := errRes["exit-code"].(float64); ok {
-						os.Exit(int(errCode))
-					}
-				}
-			}
-		}
-		fmt.Fprintf(os.Stderr, "error: %s\n", err)
-		os.Exit(1)
+		handleError(err)
 	}
 
 	if stdout != nil {
@@ -117,6 +79,51 @@ func main() {
 	if stderr != nil {
 		os.Stderr.Write(stderr)
 	}
+}
+
+func handleError(err error) {
+	if e, ok := err.(*client.Error); ok {
+		switch e.Kind {
+		case client.ErrorKindSnapAlreadyInstalled:
+			// all the components are already installed
+			errRes, ok := e.Value.(map[string]any)
+			if !ok {
+				break
+			}
+			comps, ok := errRes["Components"].([]any)
+			if !ok {
+				break
+			}
+
+			var msgs []string
+			for _, comp := range comps {
+				comp, ok := comp.(string)
+				if !ok {
+					break
+				}
+
+				msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp))
+			}
+
+			os.Stderr.Write([]byte(strings.Join(msgs, "\n")))
+			osExit(0)
+
+		case client.ErrorKindUnsuccessful:
+			if errRes, ok := e.Value.(map[string]any); ok {
+				if stdout, ok := errRes["stdout"].(string); ok {
+					os.Stdout.Write([]byte(stdout))
+				}
+				if stderr, ok := errRes["stderr"].(string); ok {
+					os.Stderr.Write([]byte(stderr))
+				}
+				if errCode, ok := errRes["exit-code"].(float64); ok {
+					osExit(int(errCode))
+				}
+			}
+		}
+	}
+	fmt.Fprintf(os.Stderr, "error: %s\n", err)
+	osExit(1)
 }
 
 func run(stdin io.Reader) (stdout, stderr []byte, err error) {
