@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/snapcore/snapd/i18n"
+	"github.com/snapcore/snapd/snap"
 	"github.com/snapcore/snapd/strutil"
 )
 
@@ -58,18 +59,28 @@ func (c *installCommand) Execute([]string) error {
 	}
 
 	cmd := managementCommand{operation: installManagementCommand, components: comps}
-	if err := runSnapManagementCommand(ctx, &cmd); err != nil {
+	err = runSnapManagementCommand(ctx, &cmd)
+	e, ok := err.(*snap.AlreadyInstalledError)
+	if err != nil && !ok {
 		return err
 	}
 
-	if len(cmd.components) < len(comps) {
-		var msgs []string
+	var msgs []string
+	if ok {
+		// all the components are already installed
+		for _, comp := range e.Components[snapName] {
+			msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp))
+		}
+	} else if len(cmd.components) < len(comps) {
+		// some of the components are already installed
 		for _, comp := range comps {
 			if !strutil.ListContains(cmd.components, comp) {
 				msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp))
 			}
 		}
+	}
 
+	if len(msgs) > 0 {
 		fmt.Fprintln(c.stderr, strings.Join(msgs, "\n"))
 	}
 

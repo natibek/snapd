@@ -319,6 +319,11 @@ func (s *installSuite) TestInstallAlreadyInstalled(c *C) {
 		Revision:  snap.R(1),
 	}, snap.StandardComponent))
 
+	seq.AddComponentForRevision(snap.R(1), sequence.NewComponentState(&snap.ComponentSideInfo{
+		Component: naming.NewComponentRef("test-snap", "two"),
+		Revision:  snap.R(1),
+	}, snap.StandardComponent))
+
 	s.st.Lock()
 	snapstate.Set(s.st, "test-snap", &snapstate.SnapState{
 		Active:   true,
@@ -327,8 +332,11 @@ func (s *installSuite) TestInstallAlreadyInstalled(c *C) {
 	})
 
 	s.st.Unlock()
-	_, _, err := ctlcmd.Run(s.mockContext, []string{"install", "+one"}, 0, nil)
-	c.Check(err, testutil.ErrorIs, *snap.NewAlreadyInstalledComponentsError("test-snap", []string{"one"}))
+	stdout, stderr, err := ctlcmd.Run(s.mockContext, []string{"install", "+one", "+two"}, 0, nil)
+	c.Check(err, IsNil)
+	c.Check(stdout, HasLen, 0)
+	c.Check(string(stderr), Matches, `(?sm).*snapctl: component "one" is already installed`)
+	c.Check(string(stderr), Matches, `(?sm).*snapctl: component "two" is already installed`)
 }
 
 func (s *installSuite) TestInstallSomeAlreadyInstalled(c *C) {

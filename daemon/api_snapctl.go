@@ -31,7 +31,6 @@ import (
 	"github.com/snapcore/snapd/jsonutil"
 	"github.com/snapcore/snapd/overlord/auth"
 	"github.com/snapcore/snapd/overlord/hookstate/ctlcmd"
-	"github.com/snapcore/snapd/snap"
 )
 
 var (
@@ -92,26 +91,6 @@ func runSnapctl(c *Command, r *http.Request, user *auth.UserState) Response {
 				Message: e.Error(),
 				Kind:    client.ErrorKindUnsuccessful,
 				Value:   result,
-			}
-		}
-		if e, ok := err.(*snap.AlreadyInstalledError); ok {
-			var comps []string
-			// e.Components should only contain one snap
-			// and the components that are already installed for it
-			for _, c := range e.Components {
-				comps = c
-				break
-			}
-
-			value := map[string]any{
-				"components": comps,
-			}
-
-			return &apiError{
-				Status:  400,
-				Message: e.Error(),
-				Kind:    client.ErrorKindSnapAlreadyInstalled,
-				Value:   value,
 			}
 		}
 		if e, ok := err.(*ctlcmd.ForbiddenCommandError); ok {
