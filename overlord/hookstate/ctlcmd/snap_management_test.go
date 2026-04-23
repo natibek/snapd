@@ -302,7 +302,7 @@ func (s *installSuite) TestRemoveCommandBadCompName(c *C) {
 	s.testMgmntCommandBadCompName(c, "remove")
 }
 
-func (s *installSuite) TestInstallAlreadyInstalled(c *C) {
+func (s *installSuite) TestInstallAllAlreadyInstalled(c *C) {
 	rev := snap.R(1)
 	si := &snap.SideInfo{
 		RealName: "test-snap",

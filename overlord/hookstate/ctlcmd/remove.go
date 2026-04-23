@@ -52,7 +52,7 @@ func (c *removeCommand) Execute([]string) error {
 		return err
 	}
 
-	if err := runSnapManagementCommand(ctx, &managementCommand{
+	if _, err := runSnapManagementCommand(ctx, managementCommand{
 		operation: removeManagementCommand, components: comps}); err != nil {
 		return err
 	}

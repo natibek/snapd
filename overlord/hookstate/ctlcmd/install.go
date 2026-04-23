@@ -21,7 +21,6 @@ package ctlcmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/snapcore/snapd/i18n"
 	"github.com/snapcore/snapd/snap"
@@ -52,36 +51,28 @@ func (c *installCommand) Execute([]string) error {
 		return err
 	}
 
-	snapName := ctx.InstanceName()
-	comps, err := validateSnapAndCompsNames(c.Positional.Names, snapName)
+	comps, err := validateSnapAndCompsNames(c.Positional.Names, ctx.InstanceName())
 	if err != nil {
 		return err
 	}
 
-	cmd := managementCommand{operation: installManagementCommand, components: comps}
-	err = runSnapManagementCommand(ctx, &cmd)
-	e, ok := err.(*snap.AlreadyInstalledError)
-	if err != nil && !ok {
-		return err
+	affected, err := runSnapManagementCommand(ctx, managementCommand{
+		operation: installManagementCommand, components: comps})
+
+	if err != nil {
+		_, ok := err.(*snap.AlreadyInstalledError)
+		if !ok {
+			return err
+		}
 	}
 
-	var msgs []string
-	if ok {
-		// all the components are already installed
-		for _, comp := range e.Components[snapName] {
-			msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp))
-		}
-	} else if len(cmd.components) < len(comps) {
-		// some of the components are already installed
+	if len(affected) < len(comps) {
 		for _, comp := range comps {
-			if !strutil.ListContains(cmd.components, comp) {
-				msgs = append(msgs, fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp))
+			if !strutil.ListContains(affected, comp) {
+				msg := fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp)
+				fmt.Fprintln(c.stderr, msg)
 			}
 		}
-	}
-
-	if len(msgs) > 0 {
-		fmt.Fprintln(c.stderr, strings.Join(msgs, "\n"))
 	}
 
 	return nil

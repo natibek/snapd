@@ -42,3 +42,8 @@ execute: |
   snap components test-snap-components-snapctl | MATCH "test-snap-components-snapctl\+one\s+installed\s+test"
   snap components test-snap-components-snapctl | MATCH "test-snap-components-snapctl\+two\s+installed\s+test"
 
+  snap run --shell test-snap-components-snapctl -c "snapctl install +one +two" 1>stdout.out 2>stderr.out
+  test ! -s stdout.out
+  MATCH "snapctl: component \"one\" is already installed" < stderr.out
+  MATCH "snapctl: component \"two\" is already installed" < stderr.out
+
