@@ -56,19 +56,19 @@ func (c *installCommand) Execute([]string) error {
 		return err
 	}
 
-	affected, err := runSnapManagementCommand(ctx, managementCommand{
+	affectedComponents, err := runSnapManagementCommand(ctx, managementCommand{
 		operation: installManagementCommand, components: comps})
 
 	if err != nil {
-		_, ok := err.(*snap.AlreadyInstalledError)
-		if !ok {
+		// when components are already installed, the error is handled below
+		if _, ok := err.(*snap.AlreadyInstalledError); !ok {
 			return err
 		}
 	}
 
-	if len(affected) < len(comps) {
+	if len(affectedComponents) < len(comps) {
 		for _, comp := range comps {
-			if !strutil.ListContains(affected, comp) {
+			if !strutil.ListContains(affectedComponents, comp) {
 				msg := fmt.Sprintf(i18n.G(`snapctl: component %q is already installed`), comp)
 				fmt.Fprintln(c.stderr, msg)
 			}
