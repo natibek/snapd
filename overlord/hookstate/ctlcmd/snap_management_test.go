@@ -302,6 +302,63 @@ func (s *installSuite) TestRemoveCommandBadCompName(c *C) {
 	s.testMgmntCommandBadCompName(c, "remove")
 }
 
+func (s *installSuite) TestInstallWithParallelInstalledSnap(c *C) {
+	s.st.Lock()
+	s.chg = s.st.NewChange("install change", "install change")
+	task := s.st.NewTask("test-task", "my test task")
+	s.chg.AddTask(task)
+	setup := &hookstate.HookSetup{Snap: "test-snap_foo", Revision: snap.R(1), Hook: "test-hook"}
+
+	// create a context for the parallel installed snap
+	var err error
+	s.mockContext, err = hookstate.NewContext(task, task.State(), setup, s.mockHandler, "")
+	c.Assert(err, IsNil)
+
+	installTask := s.st.NewTask("queued", "queued task")
+	s.st.Unlock()
+
+	restore := ctlcmd.MockSnapstateInstallComponentsFunc(func(ctx context.Context, st *state.State, names []string, info *snap.Info, vsets *snapasserts.ValidationSets, opts snapstate.Options) ([]*state.TaskSet, error) {
+		c.Check(names, DeepEquals, []string{"two"})
+		c.Check(opts, DeepEquals, snapstate.Options{ExpectOneSnap: true,
+			ConflictOptions: snapstate.ConflictOptions{FromChange: s.mockContext.ChangeID()}})
+		var ts state.TaskSet
+		ts.AddTask(installTask)
+		return []*state.TaskSet{&ts}, nil
+	})
+	defer restore()
+
+	rev := snap.R(1)
+	si := &snap.SideInfo{
+		RealName: "test-snap",
+		Revision: rev,
+		SnapID:   "test-snap-id",
+	}
+
+	seq := snapstatetest.NewSequenceFromRevisionSideInfos([]*sequence.RevisionSideState{
+		sequence.NewRevisionSideState(si, nil),
+	})
+
+	// component +one is already installed
+	seq.AddComponentForRevision(snap.R(1), sequence.NewComponentState(&snap.ComponentSideInfo{
+		Component: naming.NewComponentRef("test-snap", "one"),
+		Revision:  snap.R(1),
+	}, snap.StandardComponent))
+
+	s.st.Lock()
+	snapstate.Set(s.st, "test-snap_foo", &snapstate.SnapState{
+		Active:   true,
+		Sequence: seq,
+		Current:  rev,
+	})
+	s.st.Unlock()
+
+	stdout, stderr, err := ctlcmd.Run(s.mockContext, []string{"install", "+one", "+two"}, 0, nil)
+	c.Check(err, IsNil)
+	c.Check(stdout, HasLen, 0)
+	c.Check(string(stderr), Matches, `(?sm).*snapctl: component "one" is already installed`)
+
+}
+
 func (s *installSuite) TestInstallAllAlreadyInstalled(c *C) {
 	rev := snap.R(1)
 	si := &snap.SideInfo{
@@ -330,8 +387,8 @@ func (s *installSuite) TestInstallAllAlreadyInstalled(c *C) {
 		Sequence: seq,
 		Current:  rev,
 	})
-
 	s.st.Unlock()
+
 	stdout, stderr, err := ctlcmd.Run(s.mockContext, []string{"install", "+one", "+two"}, 0, nil)
 	c.Check(err, IsNil)
 	c.Check(stdout, HasLen, 0)
@@ -344,14 +401,15 @@ func (s *installSuite) TestInstallSomeAlreadyInstalled(c *C) {
 	task := s.st.NewTask("queued", "queued task")
 	s.st.Unlock()
 
-	ctlcmd.MockSnapstateInstallComponentsFunc(func(ctx context.Context, st *state.State, names []string, info *snap.Info, vsets *snapasserts.ValidationSets, opts snapstate.Options) ([]*state.TaskSet, error) {
+	restore := ctlcmd.MockSnapstateInstallComponentsFunc(func(ctx context.Context, st *state.State, names []string, info *snap.Info, vsets *snapasserts.ValidationSets, opts snapstate.Options) ([]*state.TaskSet, error) {
 		c.Check(names, DeepEquals, []string{"two"})
 		c.Check(opts, DeepEquals, snapstate.Options{ExpectOneSnap: true,
-			FromChange: s.mockContext.ChangeID()})
+			ConflictOptions: snapstate.ConflictOptions{FromChange: s.mockContext.ChangeID()}})
 		var ts state.TaskSet
 		ts.AddTask(task)
 		return []*state.TaskSet{&ts}, nil
 	})
+	defer restore()
 
 	rev := snap.R(1)
 	si := &snap.SideInfo{

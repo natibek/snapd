@@ -402,9 +402,9 @@ func createSnapctlInstallTasks(hctx *hookstate.Context, cmd managementCommand) (
 		return nil, nil, err
 	}
 
-	snapName := hctx.InstanceName()
+	instanceName := hctx.InstanceName()
 	var snapst snapstate.SnapState
-	if err := snapstate.Get(st, snapName, &snapst); err != nil {
+	if err := snapstate.Get(st, instanceName, &snapst); err != nil {
 		return nil, nil, err
 	}
 
@@ -413,6 +413,7 @@ func createSnapctlInstallTasks(hctx *hookstate.Context, cmd managementCommand) (
 		return nil, nil, err
 	}
 
+	snapName := snap.InstanceSnap(instanceName)
 	if vsets == nil {
 		for _, comp := range cmd.components {
 			if snapst.CurrentComponentSideInfo(naming.NewComponentRef(snapName, comp)) == nil {
@@ -424,7 +425,7 @@ func createSnapctlInstallTasks(hctx *hookstate.Context, cmd managementCommand) (
 	}
 
 	if len(affectedComponents) == 0 {
-		return nil, nil, snap.NewAlreadyInstalledComponentsError(snapName, cmd.components)
+		return nil, nil, snap.NewAlreadyInstalledComponentsError(instanceName, cmd.components)
 	}
 
 	tss, err = snapstateInstallComponents(context.TODO(), st, affectedComponents, info, vsets,
