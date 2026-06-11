@@ -927,6 +927,10 @@ func (inst *snapInstruction) dispatchForMany() (op snapManyActionFunc) {
 }
 
 func targetAlreadyInstalled(snapst *snapstate.SnapState, ropts snapstate.RevisionOptions) bool {
+	if !snapst.IsInstalled() {
+		return false
+	}
+
 	if !ropts.Revision.Unset() {
 		return snapst.Current == ropts.Revision
 	}
@@ -961,6 +965,13 @@ func installationTaskSets(ctx context.Context, st *state.State, inst *snapInstru
 	revOpts := snapstate.RevisionOptions{}
 	if expectOneSnap {
 		revOpts = *inst.revnoOpts()
+		var snapst snapstate.SnapState
+		if err := snapstate.Get(st, inst.Snaps[0], &snapst); err != nil && !errors.Is(err, state.ErrNoState) {
+			return nil, nil, nil, err
+		}
+		if !targetAlreadyInstalled(&snapst, revOpts) {
+			return nil, nil, nil, snap.NewAlreadyInstalledSnapsError(inst.Snaps)
+		}
 	}
 
 	installedSnaps := make([]string, 0, len(inst.Snaps))
@@ -989,8 +1000,6 @@ func installationTaskSets(ctx context.Context, st *state.State, inst *snapInstru
 			if len(comps) > 0 {
 				installedComponents[name] = comps
 			}
-		} else if !targetAlreadyInstalled(&snapst, revOpts) {
-			continue
 		} else if len(comps) > 0 {
 			info, err := snapst.CurrentInfo()
 			if err != nil {
